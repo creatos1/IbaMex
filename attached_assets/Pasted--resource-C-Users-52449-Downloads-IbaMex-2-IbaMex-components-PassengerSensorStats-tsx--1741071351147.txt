@@ -1,0 +1,133 @@
+[{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "typescript",
+	"code": "1323",
+	"severity": 8,
+	"message": "Las importaciones dinámicas solo se admiten cuando la marca \"--módulo\" está establecida en \"es2020\", \"es2022\", \"esnext\", \"commonjs\", \"amd\", \"system\", \"umd\", \"node16\" o \"nodenext\".",
+	"source": "ts",
+	"startLineNumber": 49,
+	"startColumn": 7,
+	"endLineNumber": 49,
+	"endColumn": 21
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "typescript",
+	"code": "2345",
+	"severity": 8,
+	"message": "No se puede asignar un argumento de tipo \"(topic: string, message: string) => void\" al parámetro de tipo \"OnMessageCallback\".\n  Los tipos de parámetros 'message' y 'payload' no son compatibles.\n    El tipo 'Buffer<ArrayBufferLike>' no se puede asignar al tipo 'string'.",
+	"source": "ts",
+	"startLineNumber": 80,
+	"startColumn": 34,
+	"endLineNumber": 80,
+	"endColumn": 51
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "typescript",
+	"code": "1323",
+	"severity": 8,
+	"message": "Las importaciones dinámicas solo se admiten cuando la marca \"--módulo\" está establecida en \"es2020\", \"es2022\", \"esnext\", \"commonjs\", \"amd\", \"system\", \"umd\", \"node16\" o \"nodenext\".",
+	"source": "ts",
+	"startLineNumber": 92,
+	"startColumn": 9,
+	"endLineNumber": 92,
+	"endColumn": 23
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "typescript",
+	"code": "2345",
+	"severity": 8,
+	"message": "No se puede asignar un argumento de tipo \"(topic: string, message: string) => void\" al parámetro de tipo \"OnMessageCallback\".\n  Los tipos de parámetros 'message' y 'payload' no son compatibles.\n    El tipo 'Buffer<ArrayBufferLike>' no se puede asignar al tipo 'string'.",
+	"source": "ts",
+	"startLineNumber": 123,
+	"startColumn": 36,
+	"endLineNumber": 123,
+	"endColumn": 53
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S1128",
+	"severity": 4,
+	"message": "Remove this unused import of 'AsyncStorage'.",
+	"source": "sonarqube",
+	"startLineNumber": 8,
+	"startColumn": 8,
+	"endLineNumber": 8,
+	"endColumn": 20
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S2004",
+	"severity": 4,
+	"message": "Refactor this code to not nest functions more than 4 levels deep. [+4 locations]",
+	"source": "sonarqube",
+	"startLineNumber": 67,
+	"startColumn": 30,
+	"endLineNumber": 67,
+	"endColumn": 32
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S2004",
+	"severity": 4,
+	"message": "Refactor this code to not nest functions more than 4 levels deep. [+4 locations]",
+	"source": "sonarqube",
+	"startLineNumber": 72,
+	"startColumn": 30,
+	"endLineNumber": 72,
+	"endColumn": 32
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S2004",
+	"severity": 4,
+	"message": "Refactor this code to not nest functions more than 4 levels deep. [+4 locations]",
+	"source": "sonarqube",
+	"startLineNumber": 77,
+	"startColumn": 30,
+	"endLineNumber": 77,
+	"endColumn": 32
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S2004",
+	"severity": 4,
+	"message": "Refactor this code to not nest functions more than 4 levels deep. [+4 locations]",
+	"source": "sonarqube",
+	"startLineNumber": 110,
+	"startColumn": 32,
+	"endLineNumber": 110,
+	"endColumn": 34
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S2004",
+	"severity": 4,
+	"message": "Refactor this code to not nest functions more than 4 levels deep. [+4 locations]",
+	"source": "sonarqube",
+	"startLineNumber": 115,
+	"startColumn": 32,
+	"endLineNumber": 115,
+	"endColumn": 34
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S2004",
+	"severity": 4,
+	"message": "Refactor this code to not nest functions more than 4 levels deep. [+4 locations]",
+	"source": "sonarqube",
+	"startLineNumber": 120,
+	"startColumn": 32,
+	"endLineNumber": 120,
+	"endColumn": 34
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (2)/IbaMex/components/PassengerSensorStats.tsx",
+	"owner": "sonarlint",
+	"code": "typescript:S6606",
+	"severity": 4,
+	"message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+	"source": "sonarqube",
+	"startLineNumber": 199,
+	"startColumn": 54,
+	"endLineNumber": 199,
+	"endColumn": 56
+}]
