@@ -86,19 +86,15 @@ export default function PassengerSensorStats() {
     } else {
       // For native platform using react-native-mqtt
       try {
-        // Set up storage driver for react_native_mqtt
-        init({
-          size: 10000,
-          storageBackend: AsyncStorage,
-          defaultExpires: 1000 * 3600 * 24,
-          enableCache: true,
-        });
-        
         console.log('Initializing MQTT client for native');
-        // Use require here to avoid errors on web
-        const { Client } = require('react_native_mqtt');
         
-        const mqttClient = new Client(MQTT_BROKER_URL, {
+        // Importando directamente para evitar problemas con init
+        const MQTT = require('react_native_mqtt');
+        
+        // Configurar el almacenamiento para MQTT
+        MQTT.setAsyncStorage(AsyncStorage);
+        
+        const mqttClient = new MQTT.Client(MQTT_BROKER_URL, {
           clientId: MQTT_CLIENT_ID,
           clean: true,
         });
