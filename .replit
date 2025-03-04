@@ -1,11 +1,11 @@
 modules = ["nodejs-20"]
-run = "npx expo start"
+run = "npx expo start --android"
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npx expo start"]
+run = ["sh", "-c", "npx expo start --android"]
 
 [workflows]
 runButton = "Run"

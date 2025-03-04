@@ -1,0 +1,71 @@
+Starting project at /home/runner/workspace
+Starting Metro Bundler
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+█ ▄▄▄▄▄ █▄▄▄ ▀▄██▄█ ▄▄▄▄▄ █
+█ █   █ ██▄▀ █  ▀▀█ █   █ █
+█ █▄▄▄█ ██▀▄ ▄▀▀█▀█ █▄▄▄█ █
+█▄▄▄▄▄▄▄█ ▀▄█ ▀▄█▄█▄▄▄▄▄▄▄█
+█▄▄█▄ █▄██▄▀█▄▀█▀▀█▄█▀█▀▀▄█
+██▀▄█▄▀▄ ▄▄██▄▄▄ ▀▀███▄▀▀ █
+█ ▄▀   ▄▄▄▄ █▀█▄ █ ▄▀▀█▀ ██
+█ ▄▀▀▄▄▄ ▄  █▀▄▀▄▀▀▄▀ ▄▀  █
+█▄█▄▄▄▄▄█▀▄█ ▄▄   ▄▄▄  ▄▀▄█
+█ ▄▄▄▄▄ ███▀▀▄  █ █▄█ ███ █
+█ █   █ █  █▄ ▀█▄▄▄  ▄ █▀▀█
+█ █▄▄▄█ █▀   ▀█▄█▄▀▀▀▄█   █
+█▄▄▄▄▄▄▄█▄██▄██▄▄▄█▄▄▄███▄█
+
+› Metro waiting on exp://172.31.128.77:8081
+› Scan the QR code above with Expo Go (Android) or the Camera app (iOS)
+
+› Web is waiting on http://localhost:8081
+
+› Using Expo Go
+› Press s │ switch to development build
+
+› Press a │ open Android
+› Press w │ open web
+
+› Press j │ open debugger
+› Press r │ reload app
+› Press m │ toggle menu
+› shift+m │ more tools
+› Press o │ open project code in your editor
+
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
+λ Bundling failed 2200ms node_modules/expo-router/node/render.js (868 modules)
+Web Bundling failed 2220ms node_modules/expo-router/entry.js (1007 modules)
+
+Metro error: Importing native-only module "react-native/Libraries/Utilities/codegenNativeCommands" on web from: /home/runner/workspace/node_modules/react-native-maps/lib/MapMarkerNativeComponent.js
+
+  Error: Importing native-only module "react-native/Libraries/Utilities/codegenNativeCommands" on web from: /home/runner/workspace/node_modules/react-native-maps/lib/MapMarkerNativeComponent.js
+    at resolver (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroMultiPlatform.ts:585:19)
+    at firstResolver (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroResolvers.ts:76:29)
+    at firstResolver (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroResolvers.ts:108:16)
+    at resolveRequest (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroResolvers.ts:137:16)
+    at Object.resolve (/home/runner/workspace/node_modules/metro-resolver/src/resolve.js:35:12)
+    at ModuleResolver.resolveDependency (/home/runner/workspace/node_modules/metro/src/node-haste/DependencyGraph/ModuleResolution.js:73:31)
+    at DependencyGraph.resolveDependency (/home/runner/workspace/node_modules/metro/src/node-haste/DependencyGraph.js:247:43)
+    at /home/runner/workspace/node_modules/metro/src/lib/transformHelpers.js:165:21
+    at resolveDependencies (/home/runner/workspace/node_modules/metro/src/DeltaBundler/buildSubgraph.js:42:25)
+    at visit (/home/runner/workspace/node_modules/metro/src/DeltaBundler/buildSubgraph.js:83:30)
+λ Bundling failed 1238ms node_modules/expo-router/node/render.js (950 modules)
+
+Metro error: Importing native-only module "react-native/Libraries/Utilities/codegenNativeCommands" on web from: /home/runner/workspace/node_modules/react-native-maps/lib/MapMarkerNativeComponent.js
+
+  Error: Importing native-only module "react-native/Libraries/Utilities/codegenNativeCommands" on web from: /home/runner/workspace/node_modules/react-native-maps/lib/MapMarkerNativeComponent.js
+    at resolver (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroMultiPlatform.ts:585:19)
+    at firstResolver (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroResolvers.ts:76:29)
+    at firstResolver (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroResolvers.ts:108:16)
+    at resolveRequest (/home/runner/workspace/node_modules/@expo/cli/src/start/server/metro/withMetroResolvers.ts:137:16)
+    at Object.resolve (/home/runner/workspace/node_modules/metro-resolver/src/resolve.js:35:12)
+    at ModuleResolver.resolveDependency (/home/runner/workspace/node_modules/metro/src/node-haste/DependencyGraph/ModuleResolution.js:73:31)
+    at DependencyGraph.resolveDependency (/home/runner/workspace/node_modules/metro/src/node-haste/DependencyGraph.js:247:43)
+    at /home/runner/workspace/node_modules/metro/src/lib/transformHelpers.js:165:21
+    at resolveDependencies (/home/runner/workspace/node_modules/metro/src/DeltaBundler/buildSubgraph.js:42:25)
+    at visit (/home/runner/workspace/node_modules/metro/src/DeltaBundler/buildSubgraph.js:83:30)
+Web Bundling failed 1295ms node_modules/expo-router/entry.js (925 modules)
+Web Bundled 1344ms node_modules/expo-router/_error.js (269 modules)
+Web Bundled 92ms node_modules/expo-router/_error.js (1 module)
