@@ -1,98 +1,140 @@
 
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, Button, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Button, TextInput, ScrollView } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
-// This component is for development only
-// It simulates sending MQTT messages to test the app without actual hardware
+interface SimulatedMessage {
+  topic: string;
+  payload: string;
+  timestamp: Date;
+}
 
-export default function MQTTSimulator() {
-  const [busId, setBusId] = useState('BUS101');
-  const [routeId, setRouteId] = useState('R1-Centro');
-  const [passengerCount, setPassengerCount] = useState('0');
-  const [batteryLevel, setBatteryLevel] = useState('100');
-  const [logs, setLogs] = useState<string[]>([]);
+export default function MQTTSimulator({ onPublish }: { onPublish: (topic: string, message: string) => void }) {
+  const [topic, setTopic] = useState('ibamex/bus/passenger/count');
+  const [message, setMessage] = useState(JSON.stringify({
+    busId: "BUS101",
+    routeId: "R1-Centro",
+    count: 5,
+    batteryLevel: 95,
+    status: "active"
+  }, null, 2));
+  const [messages, setMessages] = useState<SimulatedMessage[]>([]);
 
-  const simulateSendMQTT = () => {
-    // In a real implementation, this would send MQTT messages
-    // For now, we just log what would be sent
-    
-    const countMessage = {
-      busId,
-      routeId,
-      count: parseInt(passengerCount, 10) || 0
-    };
-    
-    const statusMessage = {
-      busId,
-      routeId,
-      batteryLevel: parseInt(batteryLevel, 10) || 100,
-      status: 'active'
-    };
-    
-    // Log the messages
-    setLogs(prev => [
-      `[${new Date().toLocaleTimeString()}] Sent passenger count: ${JSON.stringify(countMessage)}`,
-      `[${new Date().toLocaleTimeString()}] Sent status update: ${JSON.stringify(statusMessage)}`,
-      ...prev.slice(0, 10) // Keep only the last 10 logs
-    ]);
+  const handlePublish = () => {
+    try {
+      // Validate JSON
+      JSON.parse(message);
+      
+      // Publish message
+      onPublish(topic, message);
+      
+      // Add to message history
+      setMessages(prev => [
+        {
+          topic,
+          payload: message,
+          timestamp: new Date()
+        },
+        ...prev
+      ].slice(0, 10)); // Keep only last 10 messages
+      
+    } catch (e) {
+      alert('Invalid JSON message');
+    }
   };
+
+  const presetMessages = [
+    {
+      name: 'New passenger count',
+      topic: 'ibamex/bus/passenger/count',
+      payload: {
+        busId: "BUS101",
+        routeId: "R1-Centro",
+        count: 5
+      }
+    },
+    {
+      name: 'Battery update',
+      topic: 'ibamex/bus/status',
+      payload: {
+        busId: "BUS101",
+        routeId: "R1-Centro",
+        batteryLevel: 85,
+        status: "active"
+      }
+    },
+    {
+      name: 'Device offline',
+      topic: 'ibamex/bus/status',
+      payload: {
+        busId: "BUS101",
+        routeId: "R1-Centro",
+        batteryLevel: 20,
+        status: "offline"
+      }
+    }
+  ];
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>MQTT Simulator (Dev Only)</ThemedText>
+      <ThemedText style={styles.title}>ESP32 MQTT Simulator</ThemedText>
       
-      <View style={styles.inputGroup}>
-        <ThemedText>Bus ID:</ThemedText>
+      <ThemedView style={styles.inputContainer}>
+        <ThemedText style={styles.label}>Topic:</ThemedText>
         <TextInput
           style={styles.input}
-          value={busId}
-          onChangeText={setBusId}
-          placeholder="Enter Bus ID"
+          value={topic}
+          onChangeText={setTopic}
+          placeholder="mqtt/topic"
         />
-      </View>
+      </ThemedView>
       
-      <View style={styles.inputGroup}>
-        <ThemedText>Route:</ThemedText>
+      <ThemedView style={styles.inputContainer}>
+        <ThemedText style={styles.label}>Message (JSON):</ThemedText>
         <TextInput
-          style={styles.input}
-          value={routeId}
-          onChangeText={setRouteId}
-          placeholder="Enter Route ID"
+          style={[styles.input, styles.messageInput]}
+          value={message}
+          onChangeText={setMessage}
+          placeholder="Enter JSON message"
+          multiline
+          numberOfLines={4}
         />
-      </View>
+      </ThemedView>
       
-      <View style={styles.inputGroup}>
-        <ThemedText>Passenger Count:</ThemedText>
-        <TextInput
-          style={styles.input}
-          value={passengerCount}
-          onChangeText={setPassengerCount}
-          keyboardType="numeric"
-          placeholder="Enter passenger count"
-        />
-      </View>
+      <Button title="Publish Message" onPress={handlePublish} />
       
-      <View style={styles.inputGroup}>
-        <ThemedText>Battery Level (%):</ThemedText>
-        <TextInput
-          style={styles.input}
-          value={batteryLevel}
-          onChangeText={setBatteryLevel}
-          keyboardType="numeric"
-          placeholder="Enter battery level"
-        />
-      </View>
+      <ThemedView style={styles.presets}>
+        <ThemedText style={styles.presetsTitle}>Presets:</ThemedText>
+        <ScrollView horizontal>
+          {presetMessages.map((preset, index) => (
+            <ThemedView key={index} style={styles.presetItem}>
+              <Button 
+                title={preset.name} 
+                onPress={() => {
+                  setTopic(preset.topic);
+                  setMessage(JSON.stringify(preset.payload, null, 2));
+                }} 
+              />
+            </ThemedView>
+          ))}
+        </ScrollView>
+      </ThemedView>
       
-      <Button title="Simulate MQTT Message" onPress={simulateSendMQTT} />
-      
-      <ThemedText style={styles.logsTitle}>Logs:</ThemedText>
-      <ScrollView style={styles.logs}>
-        {logs.map((log, index) => (
-          <ThemedText key={index} style={styles.logText}>{log}</ThemedText>
-        ))}
-      </ScrollView>
+      <ThemedView style={styles.history}>
+        <ThemedText style={styles.historyTitle}>Message History:</ThemedText>
+        <ScrollView style={styles.historyList}>
+          {messages.map((msg, index) => (
+            <ThemedView key={index} style={styles.historyItem}>
+              <ThemedText style={styles.historyTopic}>{msg.topic}</ThemedText>
+              <ThemedText style={styles.historyTimestamp}>
+                {msg.timestamp.toLocaleTimeString()}
+              </ThemedText>
+              <ThemedText style={styles.historyPayload}>{msg.payload}</ThemedText>
+            </ThemedView>
+          ))}
+        </ScrollView>
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -101,40 +143,64 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     borderRadius: 8,
-    marginBottom: 16,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
   },
-  inputGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
+  inputContainer: {
+    marginBottom: 12,
+  },
+  label: {
+    marginBottom: 4,
   },
   input: {
-    flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 4,
     padding: 8,
-    marginLeft: 8,
+    fontSize: 14,
   },
-  logsTitle: {
+  messageInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  presets: {
     marginTop: 16,
-    marginBottom: 8,
+  },
+  presetsTitle: {
     fontWeight: 'bold',
+    marginBottom: 8,
   },
-  logs: {
+  presetItem: {
+    marginRight: 8,
+  },
+  history: {
+    marginTop: 16,
+  },
+  historyTitle: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  historyList: {
     maxHeight: 200,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
   },
-  logText: {
+  historyItem: {
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  historyTopic: {
+    fontWeight: 'bold',
     fontSize: 12,
-    marginBottom: 4,
+  },
+  historyTimestamp: {
+    fontSize: 10,
+    color: '#666',
+  },
+  historyPayload: {
+    fontSize: 12,
+    fontFamily: 'monospace',
   }
 });
