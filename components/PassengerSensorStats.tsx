@@ -5,17 +5,7 @@ import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import init from 'react_native_mqtt';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Initialize MQTT
-init({
-  size: 10000,
-  storageBackend: AsyncStorage,
-  defaultExpires: 1000 * 3600 * 24,
-  enableCache: true,
-  sync: {}
-});
 
 interface SensorData {
   lastReading: Date;
@@ -26,99 +16,65 @@ interface SensorData {
   isOnline: boolean;
 }
 
-// MQTT configuration - using the same broker as in the Arduino code
-const MQTT_BROKER = 'mqtt://broker.hivemq.com';
-const MQTT_TOPIC_COUNT = 'ibamex/bus/passenger/count';
-const MQTT_TOPIC_STATUS = 'ibamex/bus/status';
+// Simulation configuration
+const SIMULATE_REAL_TIME_DATA = true; // Set to true to simulate real-time data
+const UPDATE_INTERVAL = 5000; // milliseconds
 
-// Initial dummy data (will be replaced with real data)
+// Initial data for simulation
 const initialData: SensorData = {
   lastReading: new Date(),
-  totalDetections: 0,
-  busId: 'Unknown',
-  routeId: 'Unknown',
-  batteryLevel: 100,
-  isOnline: false
+  totalDetections: Math.floor(Math.random() * 50), // Start with some random detections
+  busId: 'BUS101',
+  routeId: 'R1-Centro',
+  batteryLevel: 95 + Math.floor(Math.random() * 6), // Start between 95-100%
+  isOnline: true
 };
 
 export default function PassengerSensorStats() {
   const [sensorData, setSensorData] = useState<SensorData>(initialData);
-  const [client, setClient] = useState<any>(null);
   const accentColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
 
-  // Setup MQTT connection
+  // Setup simulated data updates
   useEffect(() => {
-    // Create MQTT client
-    const clientId = 'ibamex_app_' + Math.random().toString(16).substring(2, 8);
-    const mqttClient = new Paho.MQTT.Client(MQTT_BROKER.replace('mqtt://', ''), 8884, clientId);
-
-    // Set callback handlers
-    mqttClient.onConnectionLost = onConnectionLost;
-    mqttClient.onMessageArrived = onMessageArrived;
-
-    // Connect
-    mqttClient.connect({
-      onSuccess: onConnect,
-      useSSL: true,
-      onFailure: (e) => console.error("MQTT Connection failed: ", e)
-    });
-
-    setClient(mqttClient);
-
-    // Clean up on unmount
-    return () => {
-      if (mqttClient && mqttClient.isConnected()) {
-        mqttClient.disconnect();
-      }
-    };
-  }, []);
-
-  // MQTT connection handlers
-  const onConnect = () => {
-    console.log('MQTT Connected');
-    if (client) {
-      client.subscribe(MQTT_TOPIC_COUNT);
-      client.subscribe(MQTT_TOPIC_STATUS);
-      setSensorData(prev => ({ ...prev, isOnline: true }));
-    }
-  };
-
-  const onConnectionLost = (responseObject: any) => {
-    if (responseObject.errorCode !== 0) {
-      console.log('MQTT Connection lost: ' + responseObject.errorMessage);
-      setSensorData(prev => ({ ...prev, isOnline: false }));
-    }
-  };
-
-  const onMessageArrived = (message: any) => {
-    console.log('MQTT Message received: ' + message.payloadString);
-    try {
-      const data = JSON.parse(message.payloadString);
+    let isActive = true;
+    
+    const simulateRealTimeData = () => {
+      if (!isActive) return;
       
-      if (message.destinationName === MQTT_TOPIC_COUNT) {
-        setSensorData(prev => ({
-          ...prev,
-          lastReading: new Date(),
-          totalDetections: data.count || prev.totalDetections,
-          busId: data.busId || prev.busId,
-          routeId: data.routeId || prev.routeId,
-          isOnline: true
-        }));
-      } else if (message.destinationName === MQTT_TOPIC_STATUS) {
-        // Handle status updates
-        setSensorData(prev => ({
-          ...prev,
-          lastReading: new Date(),
-          busId: data.busId || prev.busId,
-          routeId: data.routeId || prev.routeId,
-          batteryLevel: data.batteryLevel !== undefined ? data.batteryLevel : prev.batteryLevel,
-          isOnline: data.status === 'active'
-        }));
-      }
-    } catch (error) {
-      console.error('Error parsing MQTT message:', error);
+      // Simulate a new random count increase (0-5 passengers)
+      const newPassengers = Math.floor(Math.random() * 6);
+      
+      // Simulate a random battery decrease (0-2%)
+      const batteryDecrease = Math.random() * 2;
+      
+      // Random bus ID (for simulation)
+      const busIds = ['BUS101', 'BUS102', 'BUS103', 'BUS104'];
+      const routeIds = ['R1-Centro', 'R2-Norte', 'R3-Universidad', 'R4-Aeropuerto'];
+      
+      setSensorData(prev => ({
+        lastReading: new Date(),
+        totalDetections: prev.totalDetections + newPassengers,
+        busId: busIds[Math.floor(Math.random() * busIds.length)],
+        routeId: routeIds[Math.floor(Math.random() * routeIds.length)],
+        batteryLevel: Math.max(0, (prev.batteryLevel || 100) - batteryDecrease),
+        isOnline: Math.random() > 0.1 // 90% chance of being online
+      }));
+    };
+    
+    // Initial update
+    if (SIMULATE_REAL_TIME_DATA) {
+      simulateRealTimeData();
+      
+      // Set up interval for updates
+      const intervalId = setInterval(simulateRealTimeData, UPDATE_INTERVAL);
+      
+      // Clean up on unmount
+      return () => {
+        isActive = false;
+        clearInterval(intervalId);
+      };
     }
-  };
+  }, []);
 
   // Formatear tiempo transcurrido
   const getTimeAgo = (date: Date): string => {
