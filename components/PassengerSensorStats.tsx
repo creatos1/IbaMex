@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-// Usamos importación dinámica para evitar problemas
+// Importamos mqtt directamente, sin uso dinámico
+import * as mqtt from 'mqtt';
 
 interface SensorData {
   lastReading: Date;
@@ -41,114 +40,13 @@ export default function PassengerSensorStats() {
   const [connected, setConnected] = useState(false);
   const accentColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
 
-  // Initialize MQTT client
-  useEffect(() => {
-    // For web compatibility, only use MQTT.js
-    if (Platform.OS === 'web') {
-      // Using dynamic import for web
-      import('mqtt').then((mqtt) => {
-        console.log('Initializing MQTT client for web');
-        const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
-          clientId: MQTT_CLIENT_ID,
-          clean: true,
-        });
-        
-        setClient(mqttClient);
-        
-        mqttClient.on('connect', () => {
-          console.log('Connected to MQTT broker');
-          setConnected(true);
-          
-          // Subscribe to topics
-          mqttClient.subscribe(MQTT_TOPICS.PASSENGER_COUNT);
-          mqttClient.subscribe(MQTT_TOPICS.STATUS);
-          
-          // Update online status
-          setSensorData(prev => ({...prev, isOnline: true}));
-        });
-        
-        mqttClient.on('error', (err) => {
-          console.error('MQTT error:', err);
-          setSensorData(prev => ({...prev, isOnline: false}));
-        });
-        
-        mqttClient.on('offline', () => {
-          console.log('MQTT client offline');
-          setSensorData(prev => ({...prev, isOnline: false}));
-        });
-        
-        mqttClient.on('message', handleMqttMessage);
-      }).catch(err => {
-        console.error('Failed to load MQTT library:', err);
-        // Fall back to simulation mode
-        setupSimulation();
-      });
-    } else {
-      // For native platform - use mqtt.js with websockets instead of react-native-mqtt
-      try {
-        console.log('Initializing MQTT client for native using mqtt.js');
-        
-        // Use dynamic import for better compatibility
-        import('mqtt').then((mqtt) => {
-          console.log('MQTT library loaded successfully');
-          const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
-            clientId: MQTT_CLIENT_ID,
-            clean: true,
-          });
-        
-        setClient(mqttClient);
-        
-        mqttClient.on('connect', () => {
-            console.log('Connected to MQTT broker');
-            setConnected(true);
-            
-            // Subscribe to topics
-            mqttClient.subscribe(MQTT_TOPICS.PASSENGER_COUNT);
-            mqttClient.subscribe(MQTT_TOPICS.STATUS);
-            
-            // Update online status
-            setSensorData(prev => ({...prev, isOnline: true}));
-          });
-          
-          mqttClient.on('error', (err: any) => {
-            console.error('MQTT error:', err);
-            setSensorData(prev => ({...prev, isOnline: false}));
-          });
-          
-          mqttClient.on('offline', () => {
-            console.log('MQTT client offline');
-            setSensorData(prev => ({...prev, isOnline: false}));
-          });
-          
-          mqttClient.on('message', handleMqttMessage);
-          
-          setClient(mqttClient);
-        }).catch(err => {
-          console.error('Failed to load MQTT library:', err);
-          // Fall back to simulation mode
-          setupSimulation();
-        });
-      } catch (error) {
-        console.error('Failed to initialize MQTT:', error);
-        // Fall back to simulation mode
-        setupSimulation();
-      }
-    }
-    
-    return () => {
-      if (client) {
-        console.log('Disconnecting MQTT client');
-        client.end();
-      }
-    };
-  }, []);
-  
   // Handle incoming MQTT messages
-  const handleMqttMessage = (topic: string, message: string) => {
+  const handleMqttMessage = (topic: string, messageBuffer: Buffer) => {
+    const message = messageBuffer.toString();
     console.log('Received message:', topic, message);
     try {
-      const payload = JSON.parse(message.toString());
-      
+      const payload = JSON.parse(message);
+
       if (topic === MQTT_TOPICS.PASSENGER_COUNT) {
         // Handle passenger count updates
         setSensorData(prev => ({
@@ -174,64 +72,119 @@ export default function PassengerSensorStats() {
       console.error('Error parsing MQTT message:', error);
     }
   };
-  
+
+  // Initialize MQTT client
+  useEffect(() => {
+    const setupMqtt = () => {
+      try {
+        console.log('Initializing MQTT client');
+
+        const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+          clientId: MQTT_CLIENT_ID,
+          clean: true,
+        });
+
+        setClient(mqttClient);
+
+        mqttClient.on('connect', () => {
+          console.log('Connected to MQTT broker');
+          setConnected(true);
+
+          // Subscribe to topics
+          mqttClient.subscribe(MQTT_TOPICS.PASSENGER_COUNT);
+          mqttClient.subscribe(MQTT_TOPICS.STATUS);
+
+          // Update online status
+          setSensorData(prev => ({...prev, isOnline: true}));
+        });
+
+        mqttClient.on('error', (err) => {
+          console.error('MQTT error:', err);
+          setSensorData(prev => ({...prev, isOnline: false}));
+        });
+
+        mqttClient.on('offline', () => {
+          console.log('MQTT client offline');
+          setSensorData(prev => ({...prev, isOnline: false}));
+        });
+
+        mqttClient.on('message', handleMqttMessage);
+      } catch (error) {
+        console.error('Failed to initialize MQTT:', error);
+        // Fall back to simulation mode
+        setupSimulation();
+      }
+    };
+
+    // Intentar configurar MQTT, en caso de error usar simulación
+    try {
+      setupMqtt();
+    } catch (error) {
+      console.error('Error setting up MQTT:', error);
+      setupSimulation();
+    }
+
+    return () => {
+      if (client) {
+        console.log('Disconnecting MQTT client');
+        client.end();
+      }
+    };
+  }, []);
+
   // Fallback to simulation when MQTT fails
   const setupSimulation = () => {
     console.log('Setting up simulation mode');
     const UPDATE_INTERVAL = 5000; // milliseconds
-    
+
     const simulateRealTimeData = () => {
       // Simulate a new random count increase (0-5 passengers)
       const newPassengers = Math.floor(Math.random() * 6);
-      
+
       // Simulate a random battery decrease (0-2%)
       const batteryDecrease = Math.random() * 2;
-      
+
       // Random bus ID (for simulation)
       const busIds = ['BUS101', 'BUS102', 'BUS103', 'BUS104'];
       const routeIds = ['R1-Centro', 'R2-Norte', 'R3-Universidad', 'R4-Aeropuerto'];
-      
+
       setSensorData(prev => ({
         lastReading: new Date(),
         totalDetections: prev.totalDetections + newPassengers,
         busId: busIds[Math.floor(Math.random() * busIds.length)],
         routeId: routeIds[Math.floor(Math.random() * routeIds.length)],
-        batteryLevel: Math.max(0, (prev.batteryLevel || 100) - batteryDecrease),
+        batteryLevel: Math.max(0, (prev.batteryLevel ?? 100) - batteryDecrease),
         isOnline: Math.random() > 0.1 // 90% chance of being online
       }));
     };
-    
+
     // Initial update
     simulateRealTimeData();
-    
+
     // Set up interval for updates
     const intervalId = setInterval(simulateRealTimeData, UPDATE_INTERVAL);
-    
+
     // Clean up on unmount
     return () => clearInterval(intervalId);
   };
-  
+
   // Public method to publish a message (for simulator)
   const publishMessage = (topic: string, message: string) => {
     if (client && connected) {
       console.log('Publishing message:', topic, message);
-      if (Platform.OS === 'web') {
-        client.publish(topic, message);
-      } else {
-        client.publish(topic, message, 0, false);
-      }
+      client.publish(topic, message);
       return true;
     }
     return false;
   };
-  
+
   // Make the publish method available
   (PassengerSensorStats as any).publishMessage = publishMessage;
 
   // Format elapsed time
   const getTimeAgo = (date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-    
+
     if (seconds < 60) return `${seconds} seg`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} h`;

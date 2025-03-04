@@ -1,182 +1,3 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
-#include <ArduinoJson.h>
-
-// Configuración WiFi
-const char* ssid = "TuRedWiFi";          // CAMBIAR POR TU RED WIFI
-const char* password = "TuContraseña";   // CAMBIAR POR TU CONTRASEÑA
-
-// Configuración MQTT
-const char* mqtt_server = "broker.hivemq.com"; // Broker público MQTT
-const int mqtt_port = 1883;
-const char* mqtt_client_id = "esp32_bus101";   // Identificador único para cada ESP32
-const char* mqtt_topic_count = "ibamex/bus/passenger/count";
-const char* mqtt_topic_status = "ibamex/bus/status";
-
-// Configuración del sensor
-const int sensorPin = 5;     // Pin donde está conectado el sensor (cambiar según tu configuración)
-const int ledPin = 2;        // LED integrado del ESP32
-
-// Variables para el conteo de pasajeros
-int passengerCount = 0;
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 300;    // Tiempo de debounce en milisegundos
-
-// Variables para el envío periódico de estado
-unsigned long lastStatusSendTime = 0;
-const unsigned long statusInterval = 30000; // Enviar estado cada 30 segundos
-
-// Variables para simulación de batería
-int batteryLevel = 100;
-unsigned long lastBatteryUpdateTime = 0;
-const unsigned long batteryUpdateInterval = 60000; // Actualizar nivel de batería cada minuto
-
-// Información del bus
-const char* busId = "BUS101";
-const char* routeId = "R1-Centro";
-
-// Objetos para WiFi y MQTT
-WiFiClient espClient;
-PubSubClient client(espClient);
-
-void setup_wifi() {
-  delay(10);
-  Serial.println();
-  Serial.print("Conectando a ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi conectado");
-  Serial.println("Dirección IP: ");
-  Serial.println(WiFi.localIP());
-}
-
-void reconnect() {
-  // Bucle hasta reconectar
-  while (!client.connected()) {
-    Serial.print("Intentando conexión MQTT...");
-
-    // Intenta conectar
-    if (client.connect(mqtt_client_id)) {
-      Serial.println("conectado");
-
-      // Una vez conectado, publicar un anuncio
-      sendStatusUpdate();
-    } else {
-      Serial.print("falló, rc=");
-      Serial.print(client.state());
-      Serial.println(" intentando de nuevo en 5 segundos");
-      delay(5000);
-    }
-  }
-}
-
-void sendPassengerCount() {
-  DynamicJsonDocument doc(256);
-  doc["busId"] = busId;
-  doc["routeId"] = routeId;
-  doc["count"] = 1;  // Incremento de 1 pasajero
-
-  char buffer[256];
-  serializeJson(doc, buffer);
-
-  Serial.print("Enviando conteo: ");
-  Serial.println(buffer);
-
-  client.publish(mqtt_topic_count, buffer);
-}
-
-void sendStatusUpdate() {
-  DynamicJsonDocument doc(256);
-  doc["busId"] = busId;
-  doc["routeId"] = routeId;
-  doc["batteryLevel"] = batteryLevel;
-  doc["status"] = "active";
-
-  char buffer[256];
-  serializeJson(doc, buffer);
-
-  Serial.print("Enviando estado: ");
-  Serial.println(buffer);
-
-  client.publish(mqtt_topic_status, buffer);
-}
-
-void updateBatteryLevel() {
-  // Simular reducción de batería
-  if (batteryLevel > 0) {
-    batteryLevel -= random(0, 2);  // Reducir entre 0 y 1%
-    if (batteryLevel < 0) batteryLevel = 0;
-  }
-}
-
-void setup() {
-  pinMode(sensorPin, INPUT_PULLUP);
-  pinMode(ledPin, OUTPUT);
-
-  Serial.begin(115200);
-
-  setup_wifi();
-  client.setServer(mqtt_server, mqtt_port);
-
-  // Publicar estado inicial
-  if (client.connected()){ //Added check for connection
-    sendStatusUpdate();
-  }
-}
-
-void loop() {
-  // Verificar conexión MQTT
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
-
-  // Leer sensor de pasajeros (simulado con un botón que se activa al presionar)
-  int sensorState = digitalRead(sensorPin);
-
-  // Detectar paso de pasajero (cuando el sensor se activa)
-  if (sensorState == LOW) {
-    // Verificar debounce
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-      passengerCount++;
-      Serial.print("Pasajero detectado! Total: ");
-      Serial.println(passengerCount);
-
-      // Encender LED brevemente para indicar detección
-      digitalWrite(ledPin, HIGH);
-
-      // Enviar datos a MQTT
-      sendPassengerCount();
-
-      lastDebounceTime = millis();
-    }
-  } else {
-    digitalWrite(ledPin, LOW);
-  }
-
-  // Envío periódico de estado
-  if ((millis() - lastStatusSendTime) > statusInterval) {
-    sendStatusUpdate();
-    lastStatusSendTime = millis();
-  }
-
-  // Actualización periódica de la batería
-  if ((millis() - lastBatteryUpdateTime) > batteryUpdateInterval) {
-    updateBatteryLevel();
-    lastBatteryUpdateTime = millis();
-  }
-}
-
-
 /*
  * ESP32 Passenger Counter with MQTT Communication
  * 
@@ -189,20 +10,20 @@ void loop() {
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
-// Configuración de WiFi
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+// Configuración de WiFi - EDITA ESTOS VALORES
+const char* ssid = "TuRedWiFi";        // CAMBIAR: Nombre de tu red WiFi
+const char* password = "TuContraseña";  // CAMBIAR: Contraseña de tu red WiFi
 
 // Configuración de MQTT
 const char* mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;  // Puerto estándar para MQTT (8884 para WSS)
-const char* mqtt_client_id = "ESP32_BUS101";
+const char* mqtt_client_id = "ESP32_BUS101";  // CAMBIAR: ID único para cada dispositivo
 const char* mqtt_count_topic = "ibamex/bus/passenger/count";
 const char* mqtt_status_topic = "ibamex/bus/status";
 
-// Información del autobús
-const char* bus_id = "BUS101";
-const char* route_id = "R1-Centro";
+// Información del autobús - EDITA ESTOS VALORES
+const char* bus_id = "BUS101";       // CAMBIAR: ID único del autobús
+const char* route_id = "R1-Centro";  // CAMBIAR: ID de la ruta
 
 // Pines para sensores PIR (Passive Infrared)
 const int pinPIR_entrada = 13;  // Sensor que detecta entrada de pasajeros
@@ -223,6 +44,11 @@ bool ultimoEstadoSalida = false;
 // Temporizador para envío periódico de datos
 unsigned long ultimoEnvio = 0;
 const long intervaloEnvio = 30000;  // Enviar cada 30 segundos
+
+// Variables para simulación de batería
+int nivelBateria = 100;
+unsigned long ultimaActualizacionBateria = 0;
+const long intervaloBateria = 60000;  // Actualizar batería cada 60 segundos
 
 // Cliente WiFi y MQTT
 WiFiClient espClient;
@@ -246,6 +72,11 @@ void setup() {
 
   // Mensaje inicial
   Serial.println("Sistema de conteo de pasajeros iniciado");
+
+  // Enviar estado inicial
+  if (client.connected()) {
+    enviarEstado();
+  }
 }
 
 void loop() {
@@ -263,6 +94,12 @@ void loop() {
   if (tiempoActual - ultimoEnvio >= intervaloEnvio) {
     ultimoEnvio = tiempoActual;
     enviarEstado();
+  }
+
+  // Actualizar simulación de batería
+  if (tiempoActual - ultimaActualizacionBateria >= intervaloBateria) {
+    ultimaActualizacionBateria = tiempoActual;
+    actualizarBateria();
   }
 }
 
@@ -289,8 +126,10 @@ void setupWifi() {
 
 void reconnect() {
   // Bucle hasta reconectar
-  while (!client.connected()) {
+  int intentos = 0;
+  while (!client.connected() && intentos < 5) {
     Serial.print("Intentando conexión MQTT...");
+    intentos++;
 
     // Intentar conectar
     if (client.connect(mqtt_client_id)) {
@@ -320,14 +159,14 @@ void leerSensores() {
     contadorPasajeros++;
     totalPasajeros++;
     notificarDeteccion();
-    enviarConteo();
+    enviarConteo(1);  // Enviar incremento de 1
   }
 
   // Detectar cambio en sensor de salida (flanco ascendente)
   if (estadoSalida && !ultimoEstadoSalida) {
     contadorPasajeros = max(0, contadorPasajeros - 1);  // Evitar números negativos
     notificarDeteccion();
-    enviarConteo();
+    enviarConteo(-1);  // Enviar decremento de 1
   }
 
   // Guardar último estado
@@ -338,9 +177,12 @@ void leerSensores() {
 void notificarDeteccion() {
   // Notificación visual y auditiva de detección
   digitalWrite(pinLED, HIGH);
-  digitalWrite(pinBuzzer, HIGH);
+  if (pinBuzzer > 0) {
+    digitalWrite(pinBuzzer, HIGH);
+    delay(100);
+    digitalWrite(pinBuzzer, LOW);
+  }
   delay(100);
-  digitalWrite(pinBuzzer, LOW);
   digitalWrite(pinLED, LOW);
 
   // Imprimir información en puerto serial
@@ -350,14 +192,14 @@ void notificarDeteccion() {
   Serial.println(totalPasajeros);
 }
 
-void enviarConteo() {
+void enviarConteo(int incremento) {
   if (!client.connected()) return;
 
   // Crear objeto JSON para el mensaje
   StaticJsonDocument<200> doc;
   doc["busId"] = bus_id;
   doc["routeId"] = route_id;
-  doc["count"] = 1;  // Enviar incremento de 1 para contar acumulado en la app
+  doc["count"] = incremento;  // Enviar el incremento/decremento
 
   // Convertir a string
   char buffer[200];
@@ -371,11 +213,6 @@ void enviarConteo() {
 
 void enviarEstado() {
   if (!client.connected()) return;
-
-  // Leer nivel de batería (simulado en ESP32)
-  float voltaje = analogRead(A0) * (3.3 / 4095.0) * 2;  // Suponiendo un divisor de voltaje
-  int nivelBateria = map(voltaje * 100, 320, 420, 0, 100);  // Mapear voltaje a porcentaje
-  nivelBateria = constrain(nivelBateria, 0, 100);  // Limitar a 0-100%
 
   // Crear objeto JSON para el mensaje de estado
   StaticJsonDocument<200> doc;
@@ -394,4 +231,12 @@ void enviarEstado() {
   client.publish(mqtt_status_topic, buffer);
   Serial.print("Estado enviado: ");
   Serial.println(buffer);
+}
+
+void actualizarBateria() {
+  // Simular consumo de batería
+  if (nivelBateria > 0) {
+    nivelBateria -= random(0, 2);  // Reducir entre 0 y 1%
+    if (nivelBateria < 0) nivelBateria = 0;
+  }
 }
