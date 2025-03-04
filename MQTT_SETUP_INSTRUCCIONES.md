@@ -1,40 +1,34 @@
-# Instrucciones para la Configuración MQTT
 
-## Información Importante sobre el Modo de Simulación
+# Instrucciones para la Configuración MQTT del Proyecto IbaMex
 
-Actualmente, la aplicación está funcionando en **modo de simulación** debido a limitaciones de compatibilidad con MQTT en React Native/Expo. Esto significa que:
+## Resumen del Funcionamiento
 
-1. No hay conexión real a un broker MQTT
-2. Los datos mostrados son generados aleatoriamente
-3. El funcionamiento del simulador MQTT incorporado sigue siendo válido para pruebas
+El sistema ahora cuenta con:
 
-## Para implementación real en producción:
-
-Para una implementación real, sería necesario:
-
-1. Utilizar una biblioteca MQTT específica para React Native como:
-   - react_native_mqtt
-   - paho-mqtt adaptada para React Native
-
-2. Modificar el componente PassengerSensorStats.tsx para utilizar estas bibliotecas
-
-3. Configurar correctamente los brokers y temas MQTT
+1. **Modo Real**: Intenta conectarse a un broker MQTT real (HiveMQ) para recibir datos de los sensores ESP32.
+2. **Modo Simulación**: Si la conexión MQTT falla, se activa automáticamente el modo simulación para pruebas.
+3. **Simulador MQTT**: Permite enviar mensajes de prueba para verificar la funcionalidad sin necesidad de hardware.
 
 ## Configuración del ESP32
 
-El código del ESP32 sigue siendo válido y se puede utilizar sin cambios para enviar datos a un broker MQTT real. Consulta el archivo `arduino_code/ESP32_passenger_counter.ino` para más detalles.
+### Material necesario
+- Placa ESP32 (cualquier modelo como ESP32-WROOM, ESP32-DevKitC, NodeMCU-ESP32, etc.)
+- 2 sensores PIR (HC-SR501 o similar)
+- LED (opcional - el ESP32 tiene uno integrado)
+- Buzzer (opcional)
+- Cables jumper
+- Protoboard
+- Cable micro USB para programación
 
+### Conexiones
+1. Conectar sensor PIR de entrada al pin GPIO 13
+2. Conectar sensor PIR de salida al pin GPIO 14
+3. Conectar buzzer (opcional) al pin GPIO 12
+4. El LED integrado (pin GPIO 2) se utilizará como indicador
 
-### Requisitos de hardware
-- Placa ESP32
-- Sensores PIR (2 unidades) u otro sensor de detección de pasajeros
-- LED y buzzer (opcional)
-- Cables y protoboard
-
-### Instalación de software
-1. Instala Arduino IDE desde [arduino.cc](https://www.arduino.cc/en/software)
+### Instalación del Software
+1. Instala el Arduino IDE desde [arduino.cc](https://www.arduino.cc/en/software)
 2. Agrega soporte para ESP32:
-   - Abre Arduino IDE
    - Ve a Archivo > Preferencias
    - En "URLs adicionales de Gestor de Placas" añade:
      `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
@@ -47,77 +41,102 @@ El código del ESP32 sigue siendo válido y se puede utilizar sin cambios para e
      - PubSubClient (para MQTT)
      - ArduinoJson (versión 6.x)
 
-### Configuración del código
+### Configuración del código del ESP32
 1. Abre el archivo `arduino_code/ESP32_passenger_counter.ino`
-2. Modifica los siguientes valores:
+2. Modifica las siguientes líneas:
    ```cpp
    // Configuración de WiFi
-   const char* ssid = "TuRedWiFi";        // CAMBIAR
-   const char* password = "TuContraseña";  // CAMBIAR
+   const char* ssid = "TuRedWiFi";        // CAMBIAR: Nombre de tu red WiFi
+   const char* password = "TuContraseña";  // CAMBIAR: Contraseña de tu red WiFi
+   
+   // Configuración de MQTT (no es necesario cambiar si usas el broker público)
+   const char* mqtt_server = "broker.hivemq.com";
+   const int mqtt_port = 1883;
    
    // Identificación única
-   const char* mqtt_client_id = "ESP32_BUS101";  // CAMBIAR (único para cada ESP32)
-   const char* bus_id = "BUS101";               // CAMBIAR (ID del autobús)
-   const char* route_id = "R1-Centro";          // CAMBIAR (ruta del autobús)
+   const char* mqtt_client_id = "ESP32_BUS101";  // CAMBIAR: único para cada ESP32
+   const char* bus_id = "BUS101";               // CAMBIAR: ID del autobús
+   const char* route_id = "R1-Centro";          // CAMBIAR: ruta del autobús
    ```
 
-3. Verifica los pines de conexión:
+3. Verifica que los pines correspondan a tus conexiones:
    ```cpp
-   const int pinPIR_entrada = 13;  // Cambia según tu conexión
-   const int pinPIR_salida = 14;   // Cambia según tu conexión
-   const int pinLED = 2;           // LED integrado en ESP32
-   const int pinBuzzer = 12;       // Opcional
+   const int pinPIR_entrada = 13;
+   const int pinPIR_salida = 14;
+   const int pinLED = 2;         // LED integrado en ESP32
+   const int pinBuzzer = 12;     // 0 para desactivar
    ```
 
-4. Carga el programa a tu ESP32:
-   - Conecta el ESP32 a tu computadora
-   - Selecciona la placa y puerto correctos en Herramientas
-   - Presiona el botón "Subir"
+### Carga del Programa
+1. Conecta el ESP32 a tu computadora
+2. Selecciona la placa correcta en Herramientas > Placa
+3. Selecciona el puerto en Herramientas > Puerto
+4. Presiona el botón de carga (flecha a la derecha)
+5. Si es necesario, mantén presionado el botón BOOT del ESP32 durante la carga
 
-## Pruebas con el Simulador
+## Funcionamiento del Aplicativo
 
-Para probar la aplicación con el simulador MQTT incluido:
+### Modos de Operación
 
-1. Navega a la sección de simulación MQTT en la aplicación
-2. Utiliza los presets predefinidos o crea tus propios mensajes JSON
-3. Publica los mensajes para ver cómo la interfaz responde a los datos
+#### Modo Real
+- La aplicación intenta conectarse automáticamente a un broker MQTT (HiveMQ)
+- Los datos mostrados provienen directamente del ESP32
+- El indicador de conexión mostrará "Conectado al broker MQTT" en verde
 
-## Solución de problemas comunes
+#### Modo Simulación (Fallback)
+- Se activa automáticamente si la conexión MQTT falla
+- Genera datos aleatorios para demostración
+- El indicador mostrará "Modo simulación (MQTT no disponible)" en naranja
 
-Si experimentas errores relacionados con MQTT, asegúrate de que:
+### Simulador MQTT Incorporado
+El simulador permite enviar mensajes MQTT manualmente para probar la aplicación:
 
-1. La aplicación esté en modo de simulación (comportamiento predeterminado)
-2. El formato JSON sea correcto cuando uses el simulador
-3. Los temas MQTT sean los correctos ('ibamex/bus/passenger/count' y 'ibamex/bus/status')
+1. Navega a la sección del simulador MQTT
+2. Selecciona un tema (topic): 
+   - `ibamex/bus/passenger/count` - Para enviar conteos de pasajeros
+   - `ibamex/bus/status` - Para enviar datos de estado del bus
+3. Escribe un mensaje JSON o selecciona un preset
+4. Presiona "Publicar mensaje"
 
-## Pruebas y Verificación
+Ejemplos de mensajes JSON:
 
-Para verificar que todo funciona correctamente:
+**Para contar pasajeros:**
+```json
+{
+  "busId": "BUS101",
+  "routeId": "R1-Centro",
+  "count": 5
+}
+```
 
-1. Abre el Monitor Serie del Arduino IDE después de cargar el código al ESP32
-2. Deberías ver mensajes indicando:
-   - Conexión a WiFi exitosa
-   - Conexión a MQTT exitosa
-   - Mensajes de estado periódicos
+**Para actualizar estado:**
+```json
+{
+  "busId": "BUS101",
+  "routeId": "R1-Centro",
+  "batteryLevel": 85,
+  "status": "active"
+}
+```
 
-3. En la aplicación:
-   - El indicador "Conectado al broker MQTT" debería aparecer en verde (en modo simulación, esto puede no ser aplicable)
-   - Al activar los sensores del ESP32, deberías ver los conteos actualizarse (en modo simulación, los datos son aleatorios)
-   - El estado de la batería y otros datos deberían actualizarse periódicamente (en modo simulación, los datos son aleatorios)
+## Solución de Problemas
 
-## Diagnóstico de Problemas
-
-### El ESP32 no se conecta a WiFi
+### El ESP32 no se conecta a la red WiFi
 - Verifica las credenciales WiFi (SSID y contraseña)
-- Asegúrate de que la red WiFi esté disponible y tenga acceso a internet
-- Comprueba el monitor serie para mensajes de error
+- Comprueba que la red tenga acceso a internet
+- Verifica que la red no tenga restricciones de conexión
 
-### La aplicación no recibe mensajes MQTT
-- Verifica que el broker MQTT (HiveMQ) esté accesible (en modo simulación, esto no es aplicable)
-- Confirma que los temas (topics) MQTT coincidan exactamente (en modo simulación, usar los temas del simulador)
-- Reinicia la aplicación y el ESP32
+### La aplicación no recibe datos MQTT
+- Asegúrate de que el broker MQTT esté accesible (broker.hivemq.com:1883)
+- Verifica que el ESP32 esté conectado y enviando datos
+- Comprueba que los temas (topics) MQTT sean correctos
 
 ### Los sensores no detectan correctamente
 - Verifica el cableado y conexiones
 - Ajusta la sensibilidad de los sensores PIR
-- Prueba con un simple botón para simular la detección
+- Asegúrate de que los sensores reciban alimentación adecuada (normalmente 5V)
+
+### Conexión inestable
+- Añade una alimentación externa al ESP32 (no solo USB)
+- Ubica el ESP32 en un lugar con buena señal WiFi
+- Verifica que no haya interferencia electromagnética cerca

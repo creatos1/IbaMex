@@ -4,13 +4,71 @@ import { View, StyleSheet, Button, TextInput, ScrollView } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, Button, ScrollView, StyleSheet } from 'react-native';
+import { ThemedText } from './ThemedText';
+import { ThemedView } from './ThemedView';
+import PassengerSensorStats from './PassengerSensorStats';
+
 interface SimulatedMessage {
   topic: string;
   payload: string;
   timestamp: Date;
+  success: boolean;
 }
 
-export default function MQTTSimulator({ onPublish }: { onPublish: (topic: string, message: string) => void }) {
+// Mensajes preconfigurados para simulación rápida
+const presetMessages = [
+  {
+    name: "Añadir 5 pasajeros",
+    topic: "ibamex/bus/passenger/count",
+    payload: {
+      busId: "BUS101",
+      routeId: "R1-Centro",
+      count: 5
+    }
+  },
+  {
+    name: "Restar 2 pasajeros",
+    topic: "ibamex/bus/passenger/count",
+    payload: {
+      busId: "BUS101",
+      routeId: "R1-Centro",
+      count: -2
+    }
+  },
+  {
+    name: "Estado activo",
+    topic: "ibamex/bus/status",
+    payload: {
+      busId: "BUS101",
+      routeId: "R1-Centro",
+      batteryLevel: 95,
+      status: "active"
+    }
+  },
+  {
+    name: "Estado inactivo",
+    topic: "ibamex/bus/status",
+    payload: {
+      busId: "BUS101",
+      routeId: "R1-Centro",
+      batteryLevel: 15,
+      status: "inactive"
+    }
+  },
+  {
+    name: "Cambio de ruta",
+    topic: "ibamex/bus/status",
+    payload: {
+      busId: "BUS101",
+      routeId: "R4-Aeropuerto",
+      status: "active"
+    }
+  }
+];
+
+export default function MQTTSimulator() {
   const [topic, setTopic] = useState('ibamex/bus/passenger/count');
   const [message, setMessage] = useState(JSON.stringify({
     busId: "BUS101",
@@ -23,24 +81,25 @@ export default function MQTTSimulator({ onPublish }: { onPublish: (topic: string
 
   const handlePublish = () => {
     try {
-      // Validate JSON
+      // Validar JSON
       JSON.parse(message);
       
-      // Publish message
-      onPublish(topic, message);
+      // Publicar mensaje usando la función estática de PassengerSensorStats
+      const success = (PassengerSensorStats as any).publishMessage(topic, message);
       
-      // Add to message history
+      // Añadir al historial de mensajes
       setMessages(prev => [
         {
           topic,
           payload: message,
-          timestamp: new Date()
+          timestamp: new Date(),
+          success
         },
         ...prev
-      ].slice(0, 10)); // Keep only last 10 messages
+      ].slice(0, 10)); // Mantener solo los últimos 10 mensajes
       
     } catch (e) {
-      alert('Invalid JSON message');
+      alert('Mensaje JSON inválido');
     }
   };
 
