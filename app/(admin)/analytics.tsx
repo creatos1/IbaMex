@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 // Tipos de periodos
 type Period = 'today' | 'weekly' | 'monthly';
 
+import PassengerSensorStats from '@/components/PassengerSensorStats';
+
 export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('today');
   
@@ -102,6 +104,9 @@ export default function AnalyticsScreen() {
           </ThemedText>
         </TouchableOpacity>
       </ThemedView>
+      
+      {/* Mostrar estadísticas del sensor ESP32 */}
+      <PassengerSensorStats />
       
       <ThemedView style={styles.cardsContainer}>
         <ThemedView style={styles.card}>

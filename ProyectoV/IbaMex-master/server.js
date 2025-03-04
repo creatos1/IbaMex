@@ -78,6 +78,11 @@ const Route = mongoose.model('Route', routeSchema);
 const Bus = mongoose.model('Bus', busSchema);
 const OccupancyLog = mongoose.model('OccupancyLog', occupancyLogSchema);
 
+// Inicializar servicio de contador de pasajeros con ESP32
+const BusCounterService = require('./busCounterService');
+const busCounter = new BusCounterService();
+console.log('Servicio de contador de pasajeros ESP32 inicializado');
+
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // En producción, usar variable de entorno
 
