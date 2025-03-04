@@ -1,9 +1,29 @@
+# Instrucciones para la Configuración MQTT
 
-# Instrucciones de Configuración MQTT para IbaMex
+## Información Importante sobre el Modo de Simulación
 
-Esta guía te ayudará a configurar correctamente la comunicación MQTT entre los sensores ESP32 y la aplicación móvil IbaMex.
+Actualmente, la aplicación está funcionando en **modo de simulación** debido a limitaciones de compatibilidad con MQTT en React Native/Expo. Esto significa que:
 
-## 1. Configuración del ESP32
+1. No hay conexión real a un broker MQTT
+2. Los datos mostrados son generados aleatoriamente
+3. El funcionamiento del simulador MQTT incorporado sigue siendo válido para pruebas
+
+## Para implementación real en producción:
+
+Para una implementación real, sería necesario:
+
+1. Utilizar una biblioteca MQTT específica para React Native como:
+   - react_native_mqtt
+   - paho-mqtt adaptada para React Native
+
+2. Modificar el componente PassengerSensorStats.tsx para utilizar estas bibliotecas
+
+3. Configurar correctamente los brokers y temas MQTT
+
+## Configuración del ESP32
+
+El código del ESP32 sigue siendo válido y se puede utilizar sin cambios para enviar datos a un broker MQTT real. Consulta el archivo `arduino_code/ESP32_passenger_counter.ino` para más detalles.
+
 
 ### Requisitos de hardware
 - Placa ESP32
@@ -54,24 +74,23 @@ Esta guía te ayudará a configurar correctamente la comunicación MQTT entre lo
    - Selecciona la placa y puerto correctos en Herramientas
    - Presiona el botón "Subir"
 
-## 2. Configuración de la Aplicación
+## Pruebas con el Simulador
 
-La aplicación IbaMex ya está configurada para conectarse al broker MQTT público HiveMQ, por lo que no deberías necesitar cambiar nada en el código de la aplicación.
+Para probar la aplicación con el simulador MQTT incluido:
 
-Sin embargo, si deseas utilizar un broker MQTT diferente, sigue estos pasos:
+1. Navega a la sección de simulación MQTT en la aplicación
+2. Utiliza los presets predefinidos o crea tus propios mensajes JSON
+3. Publica los mensajes para ver cómo la interfaz responde a los datos
 
-1. Abre el archivo `components/PassengerSensorStats.tsx`
-2. Busca y modifica la configuración MQTT:
-   ```typescript
-   const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
-   const MQTT_CLIENT_ID = `ibamex_app_${Math.random().toString(16).substring(2, 10)}`;
-   const MQTT_TOPICS = {
-     PASSENGER_COUNT: 'ibamex/bus/passenger/count',
-     STATUS: 'ibamex/bus/status'
-   };
-   ```
+## Solución de problemas comunes
 
-## 3. Pruebas y Verificación
+Si experimentas errores relacionados con MQTT, asegúrate de que:
+
+1. La aplicación esté en modo de simulación (comportamiento predeterminado)
+2. El formato JSON sea correcto cuando uses el simulador
+3. Los temas MQTT sean los correctos ('ibamex/bus/passenger/count' y 'ibamex/bus/status')
+
+## Pruebas y Verificación
 
 Para verificar que todo funciona correctamente:
 
@@ -82,11 +101,11 @@ Para verificar que todo funciona correctamente:
    - Mensajes de estado periódicos
 
 3. En la aplicación:
-   - El indicador "Conectado al broker MQTT" debería aparecer en verde
-   - Al activar los sensores del ESP32, deberías ver los conteos actualizarse
-   - El estado de la batería y otros datos deberían actualizarse periódicamente
+   - El indicador "Conectado al broker MQTT" debería aparecer en verde (en modo simulación, esto puede no ser aplicable)
+   - Al activar los sensores del ESP32, deberías ver los conteos actualizarse (en modo simulación, los datos son aleatorios)
+   - El estado de la batería y otros datos deberían actualizarse periódicamente (en modo simulación, los datos son aleatorios)
 
-## 4. Diagnóstico de Problemas
+## Diagnóstico de Problemas
 
 ### El ESP32 no se conecta a WiFi
 - Verifica las credenciales WiFi (SSID y contraseña)
@@ -94,8 +113,8 @@ Para verificar que todo funciona correctamente:
 - Comprueba el monitor serie para mensajes de error
 
 ### La aplicación no recibe mensajes MQTT
-- Verifica que el broker MQTT (HiveMQ) esté accesible
-- Confirma que los temas (topics) MQTT coincidan exactamente
+- Verifica que el broker MQTT (HiveMQ) esté accesible (en modo simulación, esto no es aplicable)
+- Confirma que los temas (topics) MQTT coincidan exactamente (en modo simulación, usar los temas del simulador)
 - Reinicia la aplicación y el ESP32
 
 ### Los sensores no detectan correctamente
