@@ -6,7 +6,7 @@ import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { init } from 'mqtt';
+import { connect } from 'mqtt/dist/mqtt';
 
 interface SensorData {
   lastReading: Date;
@@ -46,9 +46,9 @@ export default function PassengerSensorStats() {
     // For web compatibility, only use MQTT.js
     if (Platform.OS === 'web') {
       // Using dynamic import for web
-      import('mqtt').then((mqtt) => {
+      import('mqtt/dist/mqtt').then(({ connect }) => {
         console.log('Initializing MQTT client for web');
-        const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+        const mqttClient = connect(MQTT_BROKER_URL, {
           clientId: MQTT_CLIENT_ID,
           clean: true,
         });

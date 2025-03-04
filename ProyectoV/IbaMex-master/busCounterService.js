@@ -1,6 +1,6 @@
 
 const mongoose = require('mongoose');
-const mqtt = require('mqtt');
+const { connect } = require('mqtt/dist/mqtt');
 
 // Configuración MQTT
 const MQTT_BROKER = 'mqtt://broker.hivemq.com';
@@ -13,7 +13,7 @@ const OccupancyLog = mongoose.model('OccupancyLog');
 
 class BusCounterService {
   constructor() {
-    this.client = mqtt.connect(MQTT_BROKER);
+    this.client = connect(MQTT_BROKER);
     this.setupMqttClient();
   }
 
