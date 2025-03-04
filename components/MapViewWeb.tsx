@@ -143,3 +143,39 @@ const styles = StyleSheet.create({
 
 // Export a default for compatibility with import statements
 export default MapView;
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { ThemedText } from './ThemedText';
+
+// This is a web-compatible fallback for react-native-maps
+// It simply displays a message that maps are not available on web
+const MapViewWeb = (props: any) => {
+  return (
+    <View style={[styles.container, props.style]}>
+      <ThemedText style={styles.text}>
+        Map view is not available in web mode.
+        Please use a mobile device or emulator to view maps.
+      </ThemedText>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  text: {
+    textAlign: 'center',
+    padding: 20,
+  }
+});
+
+// Create a MapMarker component to prevent errors
+const MapMarker = () => null;
+
+export { MapViewWeb, MapMarker };
+export default MapViewWeb;
