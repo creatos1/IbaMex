@@ -17,11 +17,15 @@ const char* mqtt_client_id = "ESP32_BusCounter";
 // Configuración de pines
 const int PIR_PIN = 13;       // Pin del sensor PIR
 const int LED_PIN = 2;        // LED para indicar movimiento detectado
+const int BATTERY_PIN = 34;   // Pin para leer nivel de batería (ADC)
+
+// Configuración ID y Ruta
+String busId = "BUS001";      // ID del autobús (personaliza según el bus)
+String routeId = "ROUTE001";  // ID de la ruta (personaliza según la ruta)
 
 // Variables globales
 int passengerCount = 0;
-String busId = "BUS001";      // ID del autobús (personaliza según el bus)
-String routeId = "ROUTE001";  // ID de la ruta (personaliza según la ruta)
+float batteryLevel = 100.0;   // Nivel de batería en porcentaje
 
 // Intervalo para enviar actualizaciones (en ms)
 const long updateInterval = 10000; // 10 segundos
@@ -39,7 +43,7 @@ void setup() {
   pinMode(PIR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   
-  Serial.println("Sistema de conteo de pasajeros initializado");
+  Serial.println("Sistema de conteo de pasajeros inicializado");
   
   // Conectar a WiFi
   setupWifi();
@@ -75,6 +79,9 @@ void loop() {
     delay(500);  // Pequeño delay para el LED
     digitalWrite(LED_PIN, LOW);   // Apagar LED
   }
+
+  // Leer nivel de batería
+  readBatteryLevel();
 
   // Enviar actualizaciones periódicas
   if (millis() - lastUpdateTime > updateInterval) {
@@ -132,6 +139,26 @@ void reconnect() {
   }
 }
 
+void readBatteryLevel() {
+  // Leer el voltaje de la batería y convertirlo a porcentaje
+  // Esta función debe adaptarse a tu hardware específico
+  
+  int rawValue = analogRead(BATTERY_PIN);
+  float voltage = rawValue * (3.3 / 4095.0); // Para ESP32 con referencia de 3.3V
+  
+  // Simulación de conversión de voltaje a porcentaje
+  // Adapta estos valores a tu batería real
+  // Asumiendo que 4.2V es 100% y 3.0V es 0%
+  float percentage = ((voltage - 3.0) / 1.2) * 100.0;
+  
+  // Limitar a rango 0-100
+  batteryLevel = constrain(percentage, 0.0, 100.0);
+  
+  // Simulación de descarga gradual para pruebas
+  // En un entorno real, comentar esta línea
+  batteryLevel = max(0.0, batteryLevel - 0.01);
+}
+
 void sendPassengerCount() {
   // Crear un objeto JSON
   StaticJsonDocument<200> doc;
@@ -139,6 +166,7 @@ void sendPassengerCount() {
   doc["routeId"] = routeId;
   doc["count"] = passengerCount;
   doc["timestamp"] = millis();
+  doc["batteryLevel"] = (int)batteryLevel;
   
   // Convertir a cadena
   char buffer[256];
@@ -157,6 +185,7 @@ void sendStatusUpdate() {
   doc["routeId"] = routeId;
   doc["passengerCount"] = passengerCount;
   doc["status"] = "active";
+  doc["batteryLevel"] = (int)batteryLevel;
   doc["timestamp"] = millis();
   
   // Convertir a cadena

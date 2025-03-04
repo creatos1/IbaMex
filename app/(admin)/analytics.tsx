@@ -105,7 +105,7 @@ export default function AnalyticsScreen() {
         </TouchableOpacity>
       </ThemedView>
       
-      {/* Mostrar estadísticas del sensor ESP32 */}
+      {/* Mostrar estadísticas del sensor ESP32 en tiempo real */}
       <PassengerSensorStats />
       
       <ThemedView style={styles.cardsContainer}>
