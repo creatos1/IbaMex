@@ -84,48 +84,50 @@ export default function PassengerSensorStats() {
         setupSimulation();
       });
     } else {
-      // For native platform using react-native-mqtt
+      // For native platform - use mqtt.js with websockets instead of react-native-mqtt
       try {
-        console.log('Initializing MQTT client for native');
+        console.log('Initializing MQTT client for native using mqtt.js');
         
-        // Importando directamente para evitar problemas con init
-        const MQTT = require('react_native_mqtt');
-        
-        // Configurar el almacenamiento para MQTT
-        MQTT.setAsyncStorage(AsyncStorage);
-        
-        const mqttClient = new MQTT.Client(MQTT_BROKER_URL, {
-          clientId: MQTT_CLIENT_ID,
-          clean: true,
-        });
+        // Use dynamic import for better compatibility
+        import('mqtt/dist/mqtt').then(({ connect }) => {
+          console.log('MQTT library loaded successfully');
+          const mqttClient = connect(MQTT_BROKER_URL, {
+            clientId: MQTT_CLIENT_ID,
+            clean: true,
+          });
         
         setClient(mqttClient);
         
         mqttClient.on('connect', () => {
-          console.log('Connected to MQTT broker');
-          setConnected(true);
+            console.log('Connected to MQTT broker');
+            setConnected(true);
+            
+            // Subscribe to topics
+            mqttClient.subscribe(MQTT_TOPICS.PASSENGER_COUNT);
+            mqttClient.subscribe(MQTT_TOPICS.STATUS);
+            
+            // Update online status
+            setSensorData(prev => ({...prev, isOnline: true}));
+          });
           
-          // Subscribe to topics
-          mqttClient.subscribe(MQTT_TOPICS.PASSENGER_COUNT);
-          mqttClient.subscribe(MQTT_TOPICS.STATUS);
+          mqttClient.on('error', (err: any) => {
+            console.error('MQTT error:', err);
+            setSensorData(prev => ({...prev, isOnline: false}));
+          });
           
-          // Update online status
-          setSensorData(prev => ({...prev, isOnline: true}));
+          mqttClient.on('offline', () => {
+            console.log('MQTT client offline');
+            setSensorData(prev => ({...prev, isOnline: false}));
+          });
+          
+          mqttClient.on('message', handleMqttMessage);
+          
+          setClient(mqttClient);
+        }).catch(err => {
+          console.error('Failed to load MQTT library:', err);
+          // Fall back to simulation mode
+          setupSimulation();
         });
-        
-        mqttClient.on('error', (err: any) => {
-          console.error('MQTT error:', err);
-          setSensorData(prev => ({...prev, isOnline: false}));
-        });
-        
-        mqttClient.on('offline', () => {
-          console.log('MQTT client offline');
-          setSensorData(prev => ({...prev, isOnline: false}));
-        });
-        
-        mqttClient.on('message', handleMqttMessage);
-        
-        mqttClient.connect();
       } catch (error) {
         console.error('Failed to initialize MQTT:', error);
         // Fall back to simulation mode

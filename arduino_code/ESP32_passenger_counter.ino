@@ -1,4 +1,183 @@
 
+#include <Arduino.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+// Configuración WiFi
+const char* ssid = "TuRedWiFi";          // CAMBIAR POR TU RED WIFI
+const char* password = "TuContraseña";   // CAMBIAR POR TU CONTRASEÑA
+
+// Configuración MQTT
+const char* mqtt_server = "broker.hivemq.com"; // Broker público MQTT
+const int mqtt_port = 1883;
+const char* mqtt_client_id = "esp32_bus101";   // Identificador único para cada ESP32
+const char* mqtt_topic_count = "ibamex/bus/passenger/count";
+const char* mqtt_topic_status = "ibamex/bus/status";
+
+// Configuración del sensor
+const int sensorPin = 5;     // Pin donde está conectado el sensor (cambiar según tu configuración)
+const int ledPin = 2;        // LED integrado del ESP32
+
+// Variables para el conteo de pasajeros
+int passengerCount = 0;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 300;    // Tiempo de debounce en milisegundos
+
+// Variables para el envío periódico de estado
+unsigned long lastStatusSendTime = 0;
+const unsigned long statusInterval = 30000; // Enviar estado cada 30 segundos
+
+// Variables para simulación de batería
+int batteryLevel = 100;
+unsigned long lastBatteryUpdateTime = 0;
+const unsigned long batteryUpdateInterval = 60000; // Actualizar nivel de batería cada minuto
+
+// Información del bus
+const char* busId = "BUS101";
+const char* routeId = "R1-Centro";
+
+// Objetos para WiFi y MQTT
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Conectando a ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi conectado");
+  Serial.println("Dirección IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void reconnect() {
+  // Bucle hasta reconectar
+  while (!client.connected()) {
+    Serial.print("Intentando conexión MQTT...");
+    
+    // Intenta conectar
+    if (client.connect(mqtt_client_id)) {
+      Serial.println("conectado");
+      
+      // Una vez conectado, publicar un anuncio
+      sendStatusUpdate();
+    } else {
+      Serial.print("falló, rc=");
+      Serial.print(client.state());
+      Serial.println(" intentando de nuevo en 5 segundos");
+      delay(5000);
+    }
+  }
+}
+
+void sendPassengerCount() {
+  DynamicJsonDocument doc(256);
+  doc["busId"] = busId;
+  doc["routeId"] = routeId;
+  doc["count"] = 1;  // Incremento de 1 pasajero
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+  
+  Serial.print("Enviando conteo: ");
+  Serial.println(buffer);
+  
+  client.publish(mqtt_topic_count, buffer);
+}
+
+void sendStatusUpdate() {
+  DynamicJsonDocument doc(256);
+  doc["busId"] = busId;
+  doc["routeId"] = routeId;
+  doc["batteryLevel"] = batteryLevel;
+  doc["status"] = "active";
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+  
+  Serial.print("Enviando estado: ");
+  Serial.println(buffer);
+  
+  client.publish(mqtt_topic_status, buffer);
+}
+
+void updateBatteryLevel() {
+  // Simular reducción de batería
+  if (batteryLevel > 0) {
+    batteryLevel -= random(0, 2);  // Reducir entre 0 y 1%
+    if (batteryLevel < 0) batteryLevel = 0;
+  }
+}
+
+void setup() {
+  pinMode(sensorPin, INPUT_PULLUP);
+  pinMode(ledPin, OUTPUT);
+  
+  Serial.begin(115200);
+  
+  setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+  
+  // Publicar estado inicial
+  if (client.connect(mqtt_client_id)) {
+    sendStatusUpdate();
+  }
+}
+
+void loop() {
+  // Verificar conexión MQTT
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  // Leer sensor de pasajeros (simulado con un botón que se activa al presionar)
+  int sensorState = digitalRead(sensorPin);
+  
+  // Detectar paso de pasajero (cuando el sensor se activa)
+  if (sensorState == LOW) {
+    // Verificar debounce
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+      passengerCount++;
+      Serial.print("Pasajero detectado! Total: ");
+      Serial.println(passengerCount);
+      
+      // Encender LED brevemente para indicar detección
+      digitalWrite(ledPin, HIGH);
+      
+      // Enviar datos a MQTT
+      sendPassengerCount();
+      
+      lastDebounceTime = millis();
+    }
+  } else {
+    digitalWrite(ledPin, LOW);
+  }
+
+  // Envío periódico de estado
+  if ((millis() - lastStatusSendTime) > statusInterval) {
+    sendStatusUpdate();
+    lastStatusSendTime = millis();
+  }
+  
+  // Actualización periódica de la batería
+  if ((millis() - lastBatteryUpdateTime) > batteryUpdateInterval) {
+    updateBatteryLevel();
+    lastBatteryUpdateTime = millis();
+  }
+}
+
+
 /*
  * ESP32 Passenger Counter with MQTT Communication
  * 
