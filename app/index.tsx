@@ -1,28 +1,17 @@
 
-import React, { useState } from 'react';
-import { StyleSheet, TextInput, Image, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import React from 'react';
+import { StatusBar } from 'expo-status-bar';
+import LoginScreen from '@/components/auth/LoginScreen';
+import { AuthProvider } from '@/hooks/useAuth';
 
-export default function LoginScreen() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const router = useRouter();
-  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-  const inputBackground = useThemeColor({ light: '#f0f0f0', dark: '#2a2a2a' }, 'background');
-  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
-
-  const handleLogin = () => {
-    if (username.toLowerCase() === 'admin' && password) {
-      router.replace('/(admin)/dashboard');
-    } else if (username.toLowerCase() === 'driver' && password) {
-      router.replace('/driver');
-    } else {
-      Alert.alert('Error', 'Credenciales inválidas. Usa "admin" o "driver" como usuario.');
-    }
-  };
+export default function Login() {
+  return (
+    <AuthProvider>
+      <StatusBar style="auto" />
+      <LoginScreen />
+    </AuthProvider>
+  );
+};
 
   return (
     <ThemedView style={styles.container}>

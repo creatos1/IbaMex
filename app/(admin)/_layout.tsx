@@ -76,3 +76,61 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+import React, { useEffect } from 'react';
+import { Tabs } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/hooks/useAuth';
+
+export default function AdminLayout() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Protección de rutas para administradores
+  useEffect(() => {
+    if (!isLoading && (!user || user.role !== 'admin')) {
+      // Redirigir si no es administrador
+      router.replace('/');
+    }
+  }, [user, isLoading, router]);
+
+  // Si está cargando, no mostrar nada aún
+  if (isLoading) {
+    return null;
+  }
+
+  // Si no hay usuario o no es admin, no renderizar el layout
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#0A84FF',
+      }}
+    >
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="users"
+        options={{
+          title: 'Usuarios',
+          tabBarIcon: ({ color }) => <Ionicons name="people-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'Analítica',
+          tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
