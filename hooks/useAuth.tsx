@@ -1,10 +1,9 @@
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { jwtDecode } from 'jwt-decode';
-
 // Definición de tipos
 export interface User {
   id: string;
@@ -41,7 +40,7 @@ interface AuthContextType {
 const API_URL = '/api';
 
 // Crear el contexto
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Store token securely
 const storeToken = async (token: string) => {
@@ -351,21 +350,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        needsMfa,
-        login,
-        register,
-        logout,
-        verifyMfa,
-        updateUserProfile,
-        changePassword,
-        toggleMfa,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      error,
+      needsMfa,
+      login,
+      register,
+      logout,
+      verifyMfa,
+      updateUserProfile,
+      changePassword,
+      toggleMfa
+    }}>
       {children}
     </AuthContext.Provider>
   );

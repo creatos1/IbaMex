@@ -8,6 +8,7 @@ channel = "stable-24_05"
 run = ["sh", "-c", "npx expo start"]
 
 [workflows]
+runButton = "Dev Server"
 
 [[workflows.workflow]]
 name = "Run"
@@ -16,6 +17,14 @@ author = 4584120
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx expo start --web"
+
+[[workflows.workflow]]
+name = "Dev Server"
+author = 40243624
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server.js"
 
 [[ports]]
 localPort = 8081
