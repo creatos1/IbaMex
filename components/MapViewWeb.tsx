@@ -1,95 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { ThemedText } from './ThemedText';
-
-// Mock MapView component for web
-export const MapView = ({ style, children, onPress, initialRegion, ...props }: any) => {
-  const backgroundColor = useThemeColor({ light: '#e0e0e0', dark: '#1a1a1a' }, 'background');
-  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
-
-  // Añadir simulación de click para desarrollo web
-  const handleMapClick = (e: React.MouseEvent) => {
-    if (onPress && typeof onPress === 'function') {
-      // Simulamos las coordenadas en un punto fijo para desarrollo
-      const mockEvent = {
-        nativeEvent: {
-          coordinate: {
-            latitude: 19.432608 + (Math.random() * 0.01 - 0.005),
-            longitude: -99.133209 + (Math.random() * 0.01 - 0.005)
-          }
-        }
-      };
-      onPress(mockEvent);
-    }
-  };
-
-  return (
-    <View style={[styles.mapContainer, { backgroundColor }, style]} onClick={handleMapClick}>
-      <Text style={[styles.mapText, { color: textColor }]}>
-        Mapa no disponible en la web
-      </Text>
-      <Text style={[styles.mapSubText, { color: textColor }]}>
-        (Haz clic para simular añadir puntos)
-      </Text>
-
-      {/* Mostrar los marcadores como una lista en web para desarrollo */}
-      <View style={styles.markersContainer}>
-        {children}
-      </View>
-    </View>
-  );
-};
-
-// Mock Marker component for web
-export const Marker = ({ coordinate, title, description, ...props }: any) => {
-  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
-
-  if (!coordinate) return null;
-
-  return (
-    <View style={styles.markerItem}>
-      <Text style={[styles.markerTitle, { color: textColor }]}>
-        {title || 'Punto'}: {coordinate.latitude.toFixed(6)}, {coordinate.longitude.toFixed(6)}
-      </Text>
-      {description && (
-        <Text style={[styles.markerDescription, { color: textColor }]}>{description}</Text>
-      )}
-    </View>
-  );
-};
-
-// Mock other required components/functions
-export const PROVIDER_GOOGLE = 'google';
-export const PROVIDER_DEFAULT = 'default';
-export const Callout = () => null;
-export const Circle = () => null;
-export const Heatmap = () => null;
-export const Polyline = ({ coordinates, ...props }: any) => {
-  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
-
-  if (!coordinates || coordinates.length === 0) return null;
-
-  return (
-    <View style={styles.polylineContainer}>
-      <Text style={[styles.polylineText, { color: textColor }]}>
-        Ruta con {coordinates.length} puntos
-      </Text>
-    </View>
-  );
-};
-export const Polygon = () => null;
-
-// Mock region type and functions
-export type Region = {
-  latitude: number;
-  longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
-};
-
-export const animateToRegion = () => {};
-export const fitToCoordinates = () => {};
+import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const styles = StyleSheet.create({
   mapContainer: {
@@ -152,9 +63,62 @@ const styles = StyleSheet.create({
   }
 });
 
-// Create a MapViewWeb component as an alias of MapView
+// Exportar MapViewWeb como un alias de MapView
 export const MapViewWeb = MapView;
 export const MapMarker = Marker;
+export const MapPolyline = Polyline;
 
-// Export a default for compatibility with import statements
-export default MapView;
+// Componente de mapa optimizado con manejo de errores
+export const OptimizedMapView = ({ 
+  children, 
+  initialRegion, 
+  style, 
+  onMapError,
+  ...rest 
+}) => {
+  const [mapError, setMapError] = React.useState(false);
+
+  React.useEffect(() => {
+    // Timeout to verify map loading
+    const timeout = setTimeout(() => {
+      if (!mapError && onMapError) {
+        onMapError('Map timeout');
+      }
+    }, 10000);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (mapError) {
+    return (
+      <View style={[styles.container, style]}>
+        <Text style={styles.text}>
+          No se pudo cargar el mapa. Verifica tu conexión e intenta nuevamente.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <MapView
+      provider={PROVIDER_GOOGLE}
+      initialRegion={initialRegion || {
+        latitude: 19.4326,
+        longitude: -99.1332,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }}
+      style={style}
+      onError={(e) => {
+        setMapError(true);
+        if (onMapError) onMapError(e);
+      }}
+      {...rest}
+    >
+      {children}
+    </MapView>
+  );
+};
+
+// Exportar por defecto para compatibilidad
+export default OptimizedMapView;

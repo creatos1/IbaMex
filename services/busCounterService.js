@@ -1,120 +1,169 @@
 
-const mongoose = require('mongoose');
-const { connect } = require('mqtt');
+const mqtt = require('mqtt');
 const Bus = require('../models/Bus');
 const OccupancyLog = require('../models/OccupancyLog');
 
-// Configuración MQTT
-const MQTT_BROKER = 'mqtt://broker.hivemq.com';
-const MQTT_TOPIC_COUNT = 'ibamex/bus/passenger/count';
-const MQTT_TOPIC_STATUS = 'ibamex/bus/status';
-
 class BusCounterService {
   constructor() {
-    this.client = connect(MQTT_BROKER);
-    this.setupMqttClient();
+    this.client = null;
+    this.options = {
+      clientId: `ibamex_server_${Math.random().toString(16).substring(2, 8)}`,
+      clean: true,
+      reconnectPeriod: 5000,
+      connectTimeout: 30 * 1000,
+    };
+    this.init();
   }
 
-  setupMqttClient() {
-    this.client.on('connect', () => {
-      console.log('Conectado al broker MQTT');
-      
-      // Suscribirse a temas
-      this.client.subscribe(MQTT_TOPIC_COUNT, (err) => {
-        if (!err) {
-          console.log(`Suscrito a ${MQTT_TOPIC_COUNT}`);
-        }
-      });
-      
-      this.client.subscribe(MQTT_TOPIC_STATUS, (err) => {
-        if (!err) {
-          console.log(`Suscrito a ${MQTT_TOPIC_STATUS}`);
-        }
-      });
-    });
-
-    this.client.on('message', async (topic, message) => {
-      try {
-        const data = JSON.parse(message.toString());
-        
-        if (topic === MQTT_TOPIC_COUNT) {
-          await this.handlePassengerCount(data);
-        } else if (topic === MQTT_TOPIC_STATUS) {
-          await this.handleBusStatus(data);
-        }
-      } catch (error) {
-        console.error('Error procesando mensaje MQTT:', error);
-      }
-    });
-
-    this.client.on('error', (error) => {
-      console.error('Error en cliente MQTT:', error);
-    });
-  }
-
-  async handlePassengerCount(data) {
+  init() {
     try {
-      const { busId, routeId, count } = data;
-      
-      // Registrar el conteo en el historial
-      await OccupancyLog.create({
-        busId,
-        routeId,
-        count
+      console.log('Inicializando servicio de contador de pasajeros...');
+      const brokerUrl = process.env.MQTT_BROKER || 'mqtt://broker.hivemq.com';
+      this.client = mqtt.connect(brokerUrl, this.options);
+
+      this.client.on('connect', () => {
+        console.log('Conectado al broker MQTT:', brokerUrl);
+        this.subscribe();
       });
-      
-      // Actualizar el estado del bus
-      const bus = await Bus.findOne({ busId });
-      
-      if (bus) {
-        // Actualizar el bus existente
-        bus.currentOccupancy = count;
-        bus.lastUpdated = new Date();
-        await bus.save();
-      } else {
-        // Crear un nuevo bus si no existe
-        await Bus.create({
-          busId,
-          routeId,
-          currentOccupancy: count,
-          lastUpdated: new Date()
-        });
-      }
-      
-      console.log(`Conteo actualizado para bus ${busId}: ${count} pasajeros`);
+
+      this.client.on('error', (err) => {
+        console.error('Error en la conexión MQTT:', err);
+        if (this.client && this.client.end) {
+          this.client.end();
+        }
+        setTimeout(() => this.init(), 10000); // Reintentar en 10 segundos
+      });
+
+      this.client.on('close', () => {
+        console.log('Conexión MQTT cerrada');
+      });
+
+      this.client.on('offline', () => {
+        console.log('Cliente MQTT desconectado');
+      });
+
+      this.client.on('reconnect', () => {
+        console.log('Intentando reconectar a MQTT...');
+      });
+
+      process.on('SIGINT', () => {
+        if (this.client) {
+          console.log('Cerrando conexión MQTT...');
+          this.client.end(true);
+        }
+        process.exit(0);
+      });
+
     } catch (error) {
-      console.error('Error al procesar conteo de pasajeros:', error);
+      console.error('Error al inicializar BusCounterService:', error);
+      setTimeout(() => this.init(), 10000); // Reintentar en 10 segundos
     }
   }
 
-  async handleBusStatus(data) {
+  subscribe() {
     try {
-      const { busId, routeId, batteryLevel, status } = data;
-      
-      // Actualizar el estado del bus
-      const bus = await Bus.findOne({ busId });
-      
-      if (bus) {
-        // Actualizar propiedades
-        if (batteryLevel !== undefined) bus.batteryLevel = batteryLevel;
-        if (status !== undefined) bus.status = status;
-        bus.lastUpdated = new Date();
-        
-        await bus.save();
-        console.log(`Estado del bus ${busId} actualizado`);
-      } else {
-        // Crear un nuevo bus
-        await Bus.create({
-          busId,
-          routeId,
-          batteryLevel: batteryLevel || 100,
-          status: status || 'active',
-          lastUpdated: new Date()
-        });
-        console.log(`Nuevo bus ${busId} registrado`);
+      const countTopic = process.env.MQTT_TOPIC_COUNT || 'ibamex/bus/passenger/count';
+      const statusTopic = process.env.MQTT_TOPIC_STATUS || 'ibamex/bus/status';
+
+      this.client.subscribe([countTopic, statusTopic], { qos: 1 }, (err) => {
+        if (err) {
+          console.error('Error al suscribirse a los tópicos:', err);
+          return;
+        }
+        console.log(`Suscrito a los tópicos: ${countTopic}, ${statusTopic}`);
+      });
+
+      this.client.on('message', this.handleMessage.bind(this));
+    } catch (error) {
+      console.error('Error en la suscripción MQTT:', error);
+    }
+  }
+
+  async handleMessage(topic, message) {
+    try {
+      const payload = message.toString();
+      console.log(`Mensaje recibido en ${topic}: ${payload}`);
+
+      // Procesar tópico de conteo de pasajeros
+      if (topic === process.env.MQTT_TOPIC_COUNT) {
+        await this.processCountMessage(payload);
+      } 
+      // Procesar tópico de estado del bus
+      else if (topic === process.env.MQTT_TOPIC_STATUS) {
+        await this.processStatusMessage(payload);
       }
     } catch (error) {
-      console.error('Error al procesar estado del bus:', error);
+      console.error('Error al procesar mensaje MQTT:', error);
+    }
+  }
+
+  async processCountMessage(payload) {
+    try {
+      const data = JSON.parse(payload);
+      
+      if (!data.busId || data.count === undefined) {
+        console.error('Mensaje de conteo incompleto:', payload);
+        return;
+      }
+
+      // Registrar en log de ocupación
+      const log = new OccupancyLog({
+        busId: data.busId,
+        routeId: data.routeId || 'UNKNOWN',
+        count: data.count,
+        timestamp: new Date()
+      });
+      await log.save();
+
+      // Actualizar bus
+      const bus = await Bus.findOne({ busId: data.busId });
+      if (bus) {
+        bus.currentOccupancy = data.count;
+        bus.lastUpdated = new Date();
+        await bus.save();
+        console.log(`Bus ${data.busId} actualizado: ${data.count} pasajeros`);
+      } else {
+        // Crear bus si no existe
+        const newBus = new Bus({
+          busId: data.busId,
+          routeId: data.routeId || 'UNKNOWN',
+          capacity: 40, // Capacidad por defecto
+          currentOccupancy: data.count,
+          status: 'active',
+          batteryLevel: 100,
+          lastUpdated: new Date()
+        });
+        await newBus.save();
+        console.log(`Nuevo bus registrado: ${data.busId}`);
+      }
+    } catch (error) {
+      console.error('Error al procesar mensaje de conteo:', error);
+    }
+  }
+
+  async processStatusMessage(payload) {
+    try {
+      const data = JSON.parse(payload);
+      
+      if (!data.busId) {
+        console.error('Mensaje de estado incompleto:', payload);
+        return;
+      }
+
+      // Actualizar estado del bus
+      const bus = await Bus.findOne({ busId: data.busId });
+      if (bus) {
+        if (data.status) bus.status = data.status;
+        if (data.batteryLevel !== undefined) bus.batteryLevel = data.batteryLevel;
+        if (data.routeId) bus.routeId = data.routeId;
+        bus.lastUpdated = new Date();
+        await bus.save();
+        console.log(`Estado del bus ${data.busId} actualizado`);
+      } else {
+        console.log(`Bus ${data.busId} no encontrado para actualizar estado`);
+      }
+    } catch (error) {
+      console.error('Error al procesar mensaje de estado:', error);
     }
   }
 }

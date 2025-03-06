@@ -12,7 +12,10 @@
     "lint": "expo lint",
     "server": "node server.js",
     "seed-db": "node ./scripts/seed-db.js",
-    "dev": "concurrently \"npm run server\" \"npm run web\""
+    "dev": "concurrently \"npm run server\" \"npm run web\"",
+    "build": "expo export --platform web",
+    "build:all": "npm run build && npm run seed-db",
+    "start:prod": "NODE_ENV=production node server.js"
   },
   "jest": {
     "preset": "jest-expo"
@@ -24,6 +27,9 @@
     "@react-navigation/native": "^7.0.14",
     "@types/react-dom": "^19.0.4",
     "bcryptjs": "^3.0.2",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "expo": "^52.0.37",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.7",
@@ -37,9 +43,12 @@
     "expo-symbols": "~0.2.2",
     "expo-system-ui": "~4.0.8",
     "expo-web-browser": "~14.0.2",
+    "express-rate-limit": "^7.1.5",
     "express-validator": "^7.2.1",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
+    "mongoose": "^8.0.3",
     "mqtt": "^5.10.4",
     "next": "^15.2.1",
     "react": "^18.3.1",

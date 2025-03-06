@@ -1,35 +1,30 @@
-import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
-import * as SecureStore from 'expo-secure-store';
+
+import { createContext, useState, useContext, useEffect, ReactNode, FC } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { jwtDecode } from 'jwt-decode';
-// Definición de tipos
-export interface User {
+import { jwtDecode } from "jwt-decode";
+
+// Tipos
+interface User {
   id: string;
   username: string;
   email: string;
-  role: 'admin' | 'driver' | 'user';
-  name?: string;
+  role: 'admin' | 'user' | 'driver';
   mfaEnabled?: boolean;
-}
-
-interface DecodedToken {
-  userId: string;
-  username: string;
-  email: string;
-  role: 'admin' | 'driver' | 'user';
-  exp: number;
 }
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
   error: string | null;
-  needsMfa: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (username: string, email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  requireMfa: boolean;
+  tempToken: string | null;
+  signUp: (username: string, email: string, password: string) => Promise<boolean>;
+  signIn: (email: string, password: string) => Promise<boolean>;
   verifyMfa: (code: string) => Promise<boolean>;
-  updateUserProfile: (userData: Partial<User>) => Promise<boolean>;
+  signOut: () => Promise<void>;
+  updateProfile: (userData: Partial<User>) => Promise<boolean>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   toggleMfa: (enable: boolean) => Promise<boolean>;
 }
@@ -37,160 +32,92 @@ interface AuthContextType {
 // API URL
 const API_URL = Platform.OS === 'web' 
   ? window.location.origin + '/api' 
-  : 'https://' + process.env.REPL_SLUG + '.' + process.env.REPL_OWNER + '.repl.co/api'; // URL para Replit y entornos nativos
+  : 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
 
 // Crear el contexto
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Store token securely
-const storeToken = async (token: string) => {
-  if (Platform.OS !== 'web') {
-    // Usar SecureStore para móviles
-    await SecureStore.setItemAsync('userToken', token);
-  } else {
-    // Usar localStorage para web
-    localStorage.setItem('userToken', token);
-  }
-};
+// Provider
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-// Get token
-const getToken = async (): Promise<string | null> => {
-  if (Platform.OS !== 'web') {
-    return await SecureStore.getItemAsync('userToken');
-  } else {
-    return localStorage.getItem('userToken');
-  }
-};
-
-// Remove token
-const removeToken = async () => {
-  if (Platform.OS !== 'web') {
-    await SecureStore.deleteItemAsync('userToken');
-  } else {
-    localStorage.removeItem('userToken');
-  }
-};
-
-// Proveedor de autenticación
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsMfa, setNeedsMfa] = useState(false);
+  const [requireMfa, setRequireMfa] = useState<boolean>(false);
   const [tempToken, setTempToken] = useState<string | null>(null);
 
-  // Verificar el token al cargar
+  // Verificar token almacenado al iniciar
   useEffect(() => {
-    const loadUser = async () => {
+    const loadToken = async () => {
       try {
-        const token = await getToken();
-
-        if (token) {
-          // Decodificar el token para obtener la información del usuario
-          const decoded = jwtDecode<DecodedToken>(token);
-
-          // Verificar si el token ha expirado
-          const currentTime = Date.now() / 1000;
-          if (decoded.exp < currentTime) {
-            await removeToken();
-            return;
+        const storedToken = await AsyncStorage.getItem('auth_token');
+        
+        if (storedToken) {
+          try {
+            // Validar y decodificar el token
+            const decoded = jwtDecode<any>(storedToken);
+            const currentTime = Date.now() / 1000;
+            
+            if (decoded.exp && decoded.exp < currentTime) {
+              // Token expirado
+              console.log('Token expirado, cerrando sesión');
+              await AsyncStorage.removeItem('auth_token');
+              setToken(null);
+              setUser(null);
+            } else {
+              // Token válido
+              setToken(storedToken);
+              setUser({
+                id: decoded.userId,
+                username: decoded.username,
+                email: decoded.email,
+                role: decoded.role
+              });
+            }
+          } catch (err) {
+            console.error('Error al decodificar token:', err);
+            await AsyncStorage.removeItem('auth_token');
           }
-
-          // Establecer el usuario
-          setUser({
-            id: decoded.userId,
-            username: decoded.username,
-            email: decoded.email,
-            role: decoded.role
-          });
         }
       } catch (err) {
-        console.error("Error loading user:", err);
-        await removeToken();
+        console.error('Error al cargar token:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadUser();
+    loadToken();
   }, []);
 
-  // Función de login
-  const login = async (email: string, password: string): Promise<boolean> => {
+  // Registro de usuario
+  const signUp = async (username: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-
-    try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error de autenticación');
-      }
-
-      if (data.requireMfa) {
-        // Si se requiere MFA, guardar el token temporal y activar el estado de MFA
-        setTempToken(data.tempToken);
-        setNeedsMfa(true);
-        setIsLoading(false);
-        return false;
-      } else {
-        // Si no se requiere MFA, guardar el token y establecer el usuario
-        await storeToken(data.token);
-        setUser(data.user);
-        setIsLoading(false);
-        return true;
-      }
-    } catch (err: any) {
-      setError(err.message || 'Error durante el inicio de sesión');
-      setIsLoading(false);
-      return false;
-    }
-  };
-
-  // Función de registro
-  const register = async (username: string, email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-
+    
     try {
       console.log(`Intentando registrar usuario en: ${API_URL}/register`);
-      console.log('Datos enviados:', { username, email, password: '******' });
-
+      
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ username, email, password }),
       });
-
+      
       console.log(`Respuesta recibida, status: ${response.status}`);
-
-      let data;
-      try {
-        const text = await response.text();
-        console.log('Respuesta en texto:', text);
-        data = text ? JSON.parse(text) : {};
-      } catch (parseError) {
-        console.error('Error al parsear respuesta:', parseError);
-        throw new Error('Error al procesar la respuesta del servidor');
-      }
-
+      
+      const data = await response.json();
       console.log('Datos recibidos:', data);
-
+      
       if (!response.ok) {
         throw new Error(data.message || 'Error de registro');
       }
-
+      
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -201,16 +128,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Verificar código MFA
-  const verifyMfa = async (code: string): Promise<boolean> => {
-    if (!tempToken) {
-      setError('No hay sesión de MFA activa');
-      return false;
-    }
-
+  // Inicio de sesión
+  const signIn = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
+    setRequireMfa(false);
+    setTempToken(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Error de inicio de sesión');
+      }
+      
+      // Verificar si se requiere MFA
+      if (data.requireMfa) {
+        setRequireMfa(true);
+        setTempToken(data.tempToken);
+        setIsLoading(false);
+        return true;
+      }
+      
+      // Guardar token y datos de usuario
+      await AsyncStorage.setItem('auth_token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      setIsLoading(false);
+      return true;
+    } catch (err: any) {
+      setError(err.message || 'Error durante el inicio de sesión');
+      setIsLoading(false);
+      return false;
+    }
+  };
 
+  // Verificación de MFA
+  const verifyMfa = async (code: string): Promise<boolean> => {
+    if (!tempToken) {
+      setError('No hay token temporal disponible');
+      return false;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
     try {
       const response = await fetch(`${API_URL}/verify-mfa`, {
         method: 'POST',
@@ -220,21 +190,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ code }),
       });
-
+      
       const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.message || 'Código MFA inválido');
+        throw new Error(data.message || 'Error de verificación MFA');
       }
-
-      // Guardar el token y establecer el usuario
-      await storeToken(data.token);
+      
+      // Guardar token y datos de usuario
+      await AsyncStorage.setItem('auth_token', data.token);
+      setToken(data.token);
       setUser(data.user);
-
-      // Limpiar estados temporales
+      setRequireMfa(false);
       setTempToken(null);
-      setNeedsMfa(false);
-
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -244,18 +212,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Actualizar perfil del usuario
-  const updateUserProfile = async (userData: Partial<User>): Promise<boolean> => {
+  // Cerrar sesión
+  const signOut = async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem('auth_token');
+    } catch (err) {
+      console.error('Error al eliminar token:', err);
+    } finally {
+      setToken(null);
+      setUser(null);
+      setRequireMfa(false);
+      setTempToken(null);
+    }
+  };
+
+  // Actualizar perfil
+  const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
+    if (!token) {
+      setError('No hay sesión activa');
+      return false;
+    }
+    
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error('No estás autenticado');
-      }
-
       const response = await fetch(`${API_URL}/user/profile`, {
         method: 'PUT',
         headers: {
@@ -264,20 +245,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify(userData),
       });
-
+      
       const data = await response.json();
-
+      
       if (!response.ok) {
         throw new Error(data.message || 'Error al actualizar perfil');
       }
-
-      // Actualizar el usuario local
-      setUser(prev => prev ? { ...prev, ...userData } : null);
-
+      
+      // Actualizar datos de usuario
+      setUser(prev => prev ? { ...prev, ...data.user } : data.user);
       setIsLoading(false);
       return true;
     } catch (err: any) {
-      setError(err.message || 'Error al actualizar el perfil');
+      setError(err.message || 'Error durante la actualización del perfil');
       setIsLoading(false);
       return false;
     }
@@ -285,16 +265,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Cambiar contraseña
   const changePassword = async (oldPassword: string, newPassword: string): Promise<boolean> => {
+    if (!token) {
+      setError('No hay sesión activa');
+      return false;
+    }
+    
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error('No estás autenticado');
-      }
-
       const response = await fetch(`${API_URL}/user/change-password`, {
         method: 'PUT',
         headers: {
@@ -303,17 +282,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ oldPassword, newPassword }),
       });
-
+      
       const data = await response.json();
-
+      
       if (!response.ok) {
         throw new Error(data.message || 'Error al cambiar contraseña');
       }
-
+      
       setIsLoading(false);
       return true;
     } catch (err: any) {
-      setError(err.message || 'Error al cambiar la contraseña');
+      setError(err.message || 'Error durante el cambio de contraseña');
       setIsLoading(false);
       return false;
     }
@@ -321,16 +300,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Activar/desactivar MFA
   const toggleMfa = async (enable: boolean): Promise<boolean> => {
+    if (!token) {
+      setError('No hay sesión activa');
+      return false;
+    }
+    
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error('No estás autenticado');
-      }
-
       const response = await fetch(`${API_URL}/user/toggle-mfa`, {
         method: 'PUT',
         headers: {
@@ -339,62 +317,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ enable }),
       });
-
+      
       const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.message || 'Error al configurar MFA');
+        throw new Error(data.message || 'Error al cambiar configuración MFA');
       }
-
-      // Si la activación fue exitosa, actualizar el estado del usuario
-      if (data.success) {
-        setUser(prev => prev ? { ...prev, mfaEnabled: enable } : null);
-      }
-
+      
+      // Actualizar estado MFA del usuario
+      setUser(prev => prev ? { ...prev, mfaEnabled: enable } : null);
       setIsLoading(false);
-      return data.success;
+      return true;
     } catch (err: any) {
-      setError(err.message || 'Error al configurar MFA');
+      setError(err.message || 'Error durante la configuración de MFA');
       setIsLoading(false);
       return false;
     }
   };
 
-  // Función de logout
-  const logout = async (): Promise<void> => {
-    await removeToken();
-    setUser(null);
-  };
-
-  // Usar useMemo para evitar que el objeto cambie en cada renderizado
-  const contextValue = useMemo(() => ({
+  const authContext: AuthContextType = {
     user,
+    token,
     isLoading,
     error,
-    needsMfa,
-    login,
-    register,
-    logout,
+    requireMfa,
+    tempToken,
+    signUp,
+    signIn,
     verifyMfa,
-    updateUserProfile,
+    signOut,
+    updateProfile,
     changePassword,
     toggleMfa
-  }), [user, isLoading, error, needsMfa]);
+  };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={authContext}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Hook para usar la autenticación
-export const useAuth = (): AuthContextType => {
+// Hook personalizado
+export const useAuth = () => {
   const context = useContext(AuthContext);
-
+  
   if (context === undefined) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+    throw new Error('useAuth debe usarse dentro de un AuthProvider');
   }
-
+  
   return context;
 };
+
+export default useAuth;

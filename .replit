@@ -1,11 +1,28 @@
+
 modules = ["nodejs-20"]
-run = "npx expo start"
+run = "npm run dev"
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npx expo start"]
+run = ["sh", "-c", "npm run start:prod"]
+deploymentTarget = "cloudrun"
+ignorePorts = false
+build = ["sh", "-c", "npm run build:all"]
+
+[env]
+PORT = "3000"
+NODE_ENV = "production"
+
+[processes]
+dev = "npm run dev"
+seed-db = "node ./scripts/seed-db.js"
+backend = "node server.js"
+frontend = "npx expo start --web"
+
+[unitTest]
+language = "nodejs"
 
 [workflows]
 runButton = "Run"
@@ -16,15 +33,31 @@ author = 4584120
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "npm run dev"
 
 [[workflows.workflow]]
-name = "Dev Server"
+name = "Seed Database"
+author = 40243624
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node ./scripts/seed-db.js"
+
+[[workflows.workflow]]
+name = "Run Backend Only"
 author = 40243624
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node server.js"
+
+[[workflows.workflow]]
+name = "Run Frontend Only"
+author = 40243624
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --web"
 
 [[ports]]
 localPort = 8081
