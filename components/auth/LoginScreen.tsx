@@ -307,3 +307,198 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function LoginScreen() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
+  const { login, error, isLoading, needsMfa } = useAuth();
+  const router = useRouter();
+  
+  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
+  const backgroundColor = useThemeColor({ light: '#fff', dark: '#1c1c1c' }, 'background');
+  const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+  const borderColor = useThemeColor({ light: '#ccc', dark: '#444' }, 'border');
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      return;
+    }
+    
+    const success = await login(email, password);
+    
+    if (success) {
+      console.log('Redirigiendo según rol...');
+    } else if (needsMfa) {
+      router.push('/mfa-verification');
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.logoContainer}>
+        <Ionicons name="bus-outline" size={80} color={primaryColor} />
+        <ThemedText style={styles.title}>IbaMex</ThemedText>
+      </View>
+      
+      <View style={styles.formContainer}>
+        <ThemedText style={styles.subtitle}>Iniciar Sesión</ThemedText>
+        
+        {error && (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+          </View>
+        )}
+        
+        <View style={styles.inputContainer}>
+          <Ionicons name="mail-outline" size={20} color={textColor} style={styles.inputIcon} />
+          <TextInput
+            style={[styles.input, { color: textColor, borderColor }]}
+            placeholderTextColor="#888"
+            placeholder="Correo electrónico"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+        
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color={textColor} style={styles.inputIcon} />
+          <TextInput
+            style={[styles.input, { color: textColor, borderColor }]}
+            placeholderTextColor="#888"
+            placeholder="Contraseña"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity 
+            style={styles.passwordToggle} 
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons 
+              name={showPassword ? "eye-off-outline" : "eye-outline"} 
+              size={20} 
+              color={textColor} 
+            />
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: primaryColor }]}
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <ThemedText style={styles.buttonText}>Iniciar Sesión</ThemedText>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.registerLink}
+          onPress={() => router.push('/register')}
+        >
+          <ThemedText style={styles.registerText}>
+            ¿No tienes una cuenta? <ThemedText style={styles.registerTextBold}>Regístrate</ThemedText>
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  subtitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#ffecec',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  errorText: {
+    color: '#d63031',
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    position: 'relative',
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 10,
+    zIndex: 1,
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 40,
+    fontSize: 16,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 10,
+    zIndex: 1,
+  },
+  button: {
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  registerLink: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  registerText: {
+    fontSize: 14,
+  },
+  registerTextBold: {
+    fontWeight: 'bold',
+  },
+});

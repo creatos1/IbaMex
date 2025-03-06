@@ -162,3 +162,181 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function MfaVerificationScreen() {
+  const [code, setCode] = useState('');
+  const { verifyMfa, isLoading, error, needsMfa } = useAuth();
+  const router = useRouter();
+  
+  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
+  const backgroundColor = useThemeColor({ light: '#fff', dark: '#1c1c1c' }, 'background');
+  const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+  const borderColor = useThemeColor({ light: '#ccc', dark: '#444' }, 'border');
+
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    // Redirigir si no se requiere MFA
+    if (!needsMfa) {
+      router.replace('/');
+    }
+  }, [needsMfa, router]);
+
+  const handleVerify = async () => {
+    if (!code || code.length !== 6) {
+      Alert.alert('Error', 'Por favor ingresa un código válido de 6 dígitos');
+      return;
+    }
+
+    const success = await verifyMfa(code);
+    if (success) {
+      router.replace('/');
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.content}>
+        <Ionicons name="shield-checkmark-outline" size={80} color={primaryColor} />
+        
+        <ThemedText style={styles.title}>Verificación en dos pasos</ThemedText>
+        
+        <ThemedText style={styles.description}>
+          Hemos enviado un código de verificación a tu correo electrónico. 
+          Por favor, ingrésalo a continuación para continuar.
+        </ThemedText>
+        
+        {error && (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+          </View>
+        )}
+        
+        <View style={styles.codeInputContainer}>
+          <TextInput
+            ref={inputRef}
+            style={[styles.codeInput, { color: textColor, borderColor }]}
+            value={code}
+            onChangeText={setCode}
+            placeholder="123456"
+            placeholderTextColor="#888"
+            keyboardType="number-pad"
+            maxLength={6}
+            autoFocus
+          />
+        </View>
+        
+        <TouchableOpacity
+          style={[styles.verifyButton, { backgroundColor: primaryColor }]}
+          onPress={handleVerify}
+          disabled={isLoading}
+        >
+          <ThemedText style={styles.verifyButtonText}>
+            Verificar
+          </ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.resendLink}>
+          <ThemedText style={styles.resendText}>
+            ¿No recibiste el código? <ThemedText style={styles.resendTextBold}>Reenviar</ThemedText>
+          </ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.cancelButton}
+          onPress={() => router.replace('/')}
+        >
+          <ThemedText style={styles.cancelButtonText}>
+            Cancelar
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  errorContainer: {
+    backgroundColor: '#ffecec',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+    width: '100%',
+  },
+  errorText: {
+    color: '#d63031',
+    textAlign: 'center',
+  },
+  codeInputContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  codeInput: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 8,
+    fontSize: 20,
+    textAlign: 'center',
+    letterSpacing: 10,
+  },
+  verifyButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  verifyButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  resendLink: {
+    marginBottom: 20,
+  },
+  resendText: {
+    fontSize: 14,
+  },
+  resendTextBold: {
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    padding: 10,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+  },
+});

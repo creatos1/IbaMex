@@ -3,7 +3,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 // Definición de tipos
 export interface User {
@@ -27,6 +27,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  needsMfa: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -36,7 +37,7 @@ interface AuthContextType {
   toggleMfa: (enable: boolean) => Promise<boolean>;
 }
 
-// API URL - Usar la URL de tu Replit
+// API URL
 const API_URL = '/api';
 
 // Crear el contexto
@@ -355,6 +356,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         isLoading,
         error,
+        needsMfa,
         login,
         register,
         logout,
@@ -367,7 +369,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-  
 };
 
 // Hook para usar la autenticación
