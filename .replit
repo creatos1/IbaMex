@@ -5,7 +5,7 @@ run = "npx expo start"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npx expo start --android"]
+run = ["sh", "-c", "npx expo start"]
 
 [workflows]
 

@@ -1,0 +1,284 @@
+[{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2613",
+	"severity": 8,
+	"message": "El módulo \"\"c:/Users/52449/Downloads/IbaMex (3)/IbaMex/node_modules/jwt-decode/build/cjs/index\"\" no tiene ninguna exportación predeterminada. ¿Pretendía usar \"import { jwtDecode } from \"c:/Users/52449/Downloads/IbaMex (3)/IbaMex/node_modules/jwt-decode/build/cjs/index\"\" en su lugar?",
+	"source": "ts",
+	"startLineNumber": 6,
+	"startColumn": 8,
+	"endLineNumber": 6,
+	"endColumn": 17
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2503",
+	"severity": 8,
+	"message": "No se encuentra el espacio de nombres 'AuthContext'.",
+	"source": "ts",
+	"startLineNumber": 353,
+	"startColumn": 6,
+	"endLineNumber": 353,
+	"endColumn": 17
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "Se esperaba '>'.",
+	"source": "ts",
+	"startLineNumber": 354,
+	"startColumn": 7,
+	"endLineNumber": 354,
+	"endColumn": 12
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2304",
+	"severity": 8,
+	"message": "No se encuentra el nombre 'value'.",
+	"source": "ts",
+	"startLineNumber": 354,
+	"startColumn": 7,
+	"endLineNumber": 354,
+	"endColumn": 12
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1005",
+	"severity": 8,
+	"message": "Se esperaba ')'.",
+	"source": "ts",
+	"startLineNumber": 354,
+	"startColumn": 12,
+	"endLineNumber": 354,
+	"endColumn": 13
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1136",
+	"severity": 8,
+	"message": "Se esperaba una asignación de propiedad.",
+	"source": "ts",
+	"startLineNumber": 354,
+	"startColumn": 14,
+	"endLineNumber": 354,
+	"endColumn": 15
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 355,
+	"endColumn": 13,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 356,
+	"endColumn": 18,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 357,
+	"endColumn": 14,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 358,
+	"endColumn": 14,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 359,
+	"endColumn": 17,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 360,
+	"endColumn": 15,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 361,
+	"endColumn": 18,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 362,
+	"endColumn": 26,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 363,
+	"endColumn": 23,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2695",
+	"severity": 8,
+	"message": "La parte izquierda del operador de coma no se usa y no tiene efectos secundarios.",
+	"source": "ts",
+	"startLineNumber": 355,
+	"startColumn": 9,
+	"endLineNumber": 364,
+	"endColumn": 18,
+	"tags": [
+		1
+	]
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1109",
+	"severity": 8,
+	"message": "Se esperaba una expresión.",
+	"source": "ts",
+	"startLineNumber": 365,
+	"startColumn": 7,
+	"endLineNumber": 365,
+	"endColumn": 8
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1109",
+	"severity": 8,
+	"message": "Se esperaba una expresión.",
+	"source": "ts",
+	"startLineNumber": 366,
+	"startColumn": 5,
+	"endLineNumber": 366,
+	"endColumn": 6
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "2365",
+	"severity": 8,
+	"message": "El operador '<' no se puede aplicar a los tipos 'boolean' y 'RegExp'.",
+	"source": "ts",
+	"startLineNumber": 366,
+	"startColumn": 5,
+	"endLineNumber": 368,
+	"endColumn": 28
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "18004",
+	"severity": 8,
+	"message": "No existe ningún valor en el ámbito para la propiedad abreviada \"children\". Declare uno o proporcione un inicializador.",
+	"source": "ts",
+	"startLineNumber": 367,
+	"startColumn": 8,
+	"endLineNumber": 367,
+	"endColumn": 16
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1161",
+	"severity": 8,
+	"message": "Literal de expresión regular sin terminar.",
+	"source": "ts",
+	"startLineNumber": 368,
+	"startColumn": 6,
+	"endLineNumber": 368,
+	"endColumn": 28
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1128",
+	"severity": 8,
+	"message": "Se esperaba una declaración o una instrucción.",
+	"source": "ts",
+	"startLineNumber": 369,
+	"startColumn": 3,
+	"endLineNumber": 369,
+	"endColumn": 4
+},{
+	"resource": "/C:/Users/52449/Downloads/IbaMex (3)/IbaMex/hooks/useAuth.ts",
+	"owner": "typescript",
+	"code": "1128",
+	"severity": 8,
+	"message": "Se esperaba una declaración o una instrucción.",
+	"source": "ts",
+	"startLineNumber": 371,
+	"startColumn": 1,
+	"endLineNumber": 371,
+	"endColumn": 2
+}]
