@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, TextInput, ScrollView, TouchableOpacity, FlatList, Platform, Alert, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
@@ -75,9 +74,9 @@ export default function RoutesScreen() {
   const [addingStopLocation, setAddingStopLocation] = useState(false);
   const [currentStopToAdd, setCurrentStopToAdd] = useState<Stop | null>(null);
   const [mapMode, setMapMode] = useState<'route' | 'stop'>('route');
-  
+
   const mapRef = useRef<any>(null);
-  
+
   const inputBackground = useThemeColor({ light: '#f0f0f0', dark: '#2a2a2a' }, 'background');
   const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
   const cardBackground = useThemeColor({ light: '#f8f9fa', dark: '#2a2a2a' }, 'background');
@@ -106,7 +105,7 @@ export default function RoutesScreen() {
   // Función para añadir un punto en el mapa
   const handleMapPress = (e: any) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
-    
+
     if (mapMode === 'route') {
       setRoutePoints([...routePoints, {
         id: Date.now().toString(),
@@ -119,11 +118,11 @@ export default function RoutesScreen() {
         latitude,
         longitude
       };
-      
-      setStops(stops.map(stop => 
+
+      setStops(stops.map(stop =>
         stop.id === currentStopToAdd.id ? updatedStop : stop
       ));
-      
+
       setAddingStopLocation(false);
       setCurrentStopToAdd(null);
       setMapMode('route');
@@ -133,21 +132,21 @@ export default function RoutesScreen() {
   // Función para añadir una parada
   const addStop = () => {
     if (stopName.trim()) {
-      const newStop = { 
-        id: Date.now().toString(), 
-        name: stopName 
+      const newStop = {
+        id: Date.now().toString(),
+        name: stopName
       };
       setStops([...stops, newStop]);
       setStopName('');
     }
   };
-  
+
   // Función para asignar ubicación a una parada
   const assignStopLocation = (stop: Stop) => {
     setCurrentStopToAdd(stop);
     setAddingStopLocation(true);
     setMapMode('stop');
-    
+
     // Mostrar instrucciones al usuario
     Alert.alert(
       "Asignar ubicación",
@@ -160,7 +159,7 @@ export default function RoutesScreen() {
   const removeRoutePoint = (pointId: string) => {
     setRoutePoints(routePoints.filter(point => point.id !== pointId));
   };
-  
+
   // Función para eliminar una parada
   const removeStop = (stopId: string) => {
     setStops(stops.filter(stop => stop.id !== stopId));
@@ -194,16 +193,16 @@ export default function RoutesScreen() {
     setSelectedRoute(route);
     setShowRouteMap(true);
   };
-  
+
   // Función para alternar la activación de una ruta
   const toggleRouteActive = (routeId: string) => {
-    setRoutes(routes.map(route => 
-      route.id === routeId 
-        ? { ...route, isActive: !route.isActive } 
+    setRoutes(routes.map(route =>
+      route.id === routeId
+        ? { ...route, isActive: !route.isActive }
         : route
     ));
   };
-  
+
   // Función para eliminar una ruta
   const deleteRoute = (routeId: string) => {
     Alert.alert(
@@ -211,8 +210,8 @@ export default function RoutesScreen() {
       "¿Estás seguro de que deseas eliminar esta ruta?",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Eliminar", 
+        {
+          text: "Eliminar",
           style: "destructive",
           onPress: () => {
             setRoutes(routes.filter(route => route.id !== routeId));
@@ -234,13 +233,13 @@ export default function RoutesScreen() {
       const dLat = ((p2.latitude - p1.latitude) * Math.PI) / 180;
       const dLon = ((p2.longitude - p1.longitude) * Math.PI) / 180;
 
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos((p1.latitude * Math.PI) / 180) * 
-        Math.cos((p2.latitude * Math.PI) / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2); 
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((p1.latitude * Math.PI) / 180) *
+        Math.cos((p2.latitude * Math.PI) / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distance = R * c;
 
       total += distance;
@@ -273,11 +272,11 @@ export default function RoutesScreen() {
 
       <ThemedText style={styles.label}>Mapa de la Ruta</ThemedText>
       <ThemedText style={styles.helpText}>
-        {mapMode === 'route' 
+        {mapMode === 'route'
           ? 'Toca en el mapa para añadir puntos a la ruta'
           : 'Toca en el mapa para asignar la ubicación de la parada'}
       </ThemedText>
-      
+
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -294,7 +293,7 @@ export default function RoutesScreen() {
             title={`Punto ${index + 1}`}
           />
         ))}
-        
+
         {routePoints.length > 1 && (
           <Polyline
             coordinates={routePoints.map(point => ({
@@ -305,7 +304,7 @@ export default function RoutesScreen() {
             strokeWidth={3}
           />
         )}
-        
+
         {/* Mostrar los markers de las paradas con ubicación */}
         {stops.filter(stop => stop.latitude && stop.longitude).map((stop, index) => (
           <Marker
@@ -319,15 +318,15 @@ export default function RoutesScreen() {
           />
         ))}
       </MapView>
-      
+
       {routePoints.length > 0 && (
         <ThemedView style={styles.pointsList}>
           <ThemedText style={styles.pointsListTitle}>Puntos de la Ruta:</ThemedText>
           {routePoints.map((point, index) => (
             <ThemedView key={point.id} style={styles.pointItem}>
               <ThemedText>Punto {index + 1}: {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</ThemedText>
-              <TouchableOpacity 
-                style={styles.removeButton} 
+              <TouchableOpacity
+                style={styles.removeButton}
                 onPress={() => removeRoutePoint(point.id)}
               >
                 <ThemedText style={styles.removeButtonText}>×</ThemedText>
@@ -384,7 +383,7 @@ export default function RoutesScreen() {
         </ThemedView>
       )}
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.createButton, (!routeName || !routeDescription || routePoints.length === 0) ? styles.disabledButton : {}]}
         onPress={createRoute}
         disabled={!routeName || !routeDescription || routePoints.length === 0}
@@ -400,23 +399,23 @@ export default function RoutesScreen() {
               <ThemedView style={styles.routeCardHeader}>
                 <ThemedText style={styles.routeCardTitle}>{route.name}</ThemedText>
                 <ThemedView style={styles.routeCardActions}>
-                  <TouchableOpacity 
-                    style={[styles.iconButton, route.isActive ? styles.activeRouteButton : styles.inactiveRouteButton]} 
+                  <TouchableOpacity
+                    style={[styles.iconButton, route.isActive ? styles.activeRouteButton : styles.inactiveRouteButton]}
                     onPress={() => toggleRouteActive(route.id)}
                   >
                     <Ionicons name={route.isActive ? "eye" : "eye-off"} size={18} color="white" />
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.iconButton, styles.deleteRouteButton]} 
+                  <TouchableOpacity
+                    style={[styles.iconButton, styles.deleteRouteButton]}
                     onPress={() => deleteRoute(route.id)}
                   >
                     <Ionicons name="trash" size={18} color="white" />
                   </TouchableOpacity>
                 </ThemedView>
               </ThemedView>
-              
+
               <ThemedText style={styles.routeCardDescription}>{route.description}</ThemedText>
-              
+
               <ThemedView style={styles.routeCardFooter}>
                 <TouchableOpacity style={styles.viewMapButton} onPress={() => viewRouteMap(route)}>
                   <ThemedText style={styles.viewMapButtonText}>Ver en Mapa</ThemedText>
@@ -453,7 +452,7 @@ export default function RoutesScreen() {
           <ThemedView style={styles.modalContainer}>
             <ThemedView style={[styles.modalContent, { backgroundColor: cardBackground }]}>
               <ThemedText style={styles.modalTitle}>{selectedRoute.name}</ThemedText>
-              
+
               <MapView
                 style={styles.modalMap}
                 initialRegion={selectedRoute.points.length > 0 ? {
@@ -473,7 +472,7 @@ export default function RoutesScreen() {
                     title={`Punto ${index + 1}`}
                   />
                 ))}
-                
+
                 {selectedRoute.points.length > 1 && (
                   <Polyline
                     coordinates={selectedRoute.points.map(point => ({
@@ -484,7 +483,7 @@ export default function RoutesScreen() {
                     strokeWidth={3}
                   />
                 )}
-                
+
                 {selectedRoute.stops
                   .filter(stop => stop.latitude && stop.longitude)
                   .map((stop) => (
@@ -497,9 +496,9 @@ export default function RoutesScreen() {
                       title={stop.name}
                       pinColor="green"
                     />
-                ))}
+                  ))}
               </MapView>
-              
+
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowRouteMap(false)}
@@ -535,6 +534,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 15,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ccc'
   },
   textArea: {
     width: '100%',
@@ -544,6 +545,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 15,
     textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#ccc'
   },
   map: {
     width: '100%',
@@ -776,334 +779,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold'
-  },
-});
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useThemeColor } from '@/hooks/useThemeColor';
-
-interface Route {
-  id: string;
-  name: string;
-  stops: number;
-  schedule: string;
-  active: boolean;
-}
-
-export default function RoutesManagement() {
-  const [routes, setRoutes] = useState<Route[]>([
-    { id: 'r1', name: 'R1-Centro', stops: 12, schedule: '06:00 - 22:00', active: true },
-    { id: 'r2', name: 'R2-Norte', stops: 8, schedule: '06:30 - 21:00', active: true },
-    { id: 'r3', name: 'R3-Universidad', stops: 15, schedule: '07:00 - 23:00', active: true },
-    { id: 'r4', name: 'R4-Aeropuerto', stops: 6, schedule: '05:00 - 00:00', active: true },
-    { id: 'r5', name: 'R5-Industrial', stops: 10, schedule: '05:30 - 20:00', active: false },
-  ]);
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterActive, setFilterActive] = useState<boolean | null>(null);
-  
-  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
-  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-  const cardBackground = useThemeColor({ light: '#f0f0f0', dark: '#2a2a2a' }, 'background');
-  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
-  
-  const filteredRoutes = routes.filter(route => {
-    const matchesSearch = route.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterActive === null || route.active === filterActive;
-    return matchesSearch && matchesFilter;
-  });
-  
-  const toggleRouteStatus = (id: string) => {
-    setRoutes(routes.map(route => 
-      route.id === id ? { ...route, active: !route.active } : route
-    ));
-  };
-  
-  const addNewRoute = () => {
-    Alert.alert('Añadir Ruta', 'Funcionalidad en desarrollo');
-  };
-  
-  const editRoute = (id: string) => {
-    Alert.alert('Editar Ruta', `Editando ruta con ID: ${id}`);
-  };
-  
-  const deleteRoute = (id: string) => {
-    Alert.alert(
-      'Eliminar Ruta',
-      '¿Estás seguro de que deseas eliminar esta ruta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
-          style: 'destructive',
-          onPress: () => {
-            setRoutes(routes.filter(route => route.id !== id));
-          }
-        }
-      ]
-    );
-  };
-  
-  return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <View style={[styles.searchBar, { backgroundColor: cardBackground }]}>
-          <Ionicons name="search" size={20} color="#888" />
-          <TextInput
-            style={[styles.searchInput, { color: textColor }]}
-            placeholder="Buscar rutas..."
-            placeholderTextColor="#888"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
-          {searchTerm ? (
-            <TouchableOpacity onPress={() => setSearchTerm('')}>
-              <Ionicons name="close-circle" size={20} color="#888" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        
-        <TouchableOpacity 
-          style={[styles.addButton, { backgroundColor: primaryColor }]}
-          onPress={addNewRoute}
-        >
-          <Ionicons name="add" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.filters}>
-        <TouchableOpacity 
-          style={[
-            styles.filterButton, 
-            filterActive === null && { backgroundColor: primaryColor, borderColor: primaryColor }
-          ]}
-          onPress={() => setFilterActive(null)}
-        >
-          <ThemedText style={[
-            styles.filterButtonText,
-            filterActive === null && { color: 'white' }
-          ]}>
-            Todas
-          </ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[
-            styles.filterButton, 
-            filterActive === true && { backgroundColor: primaryColor, borderColor: primaryColor }
-          ]}
-          onPress={() => setFilterActive(true)}
-        >
-          <ThemedText style={[
-            styles.filterButtonText,
-            filterActive === true && { color: 'white' }
-          ]}>
-            Activas
-          </ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[
-            styles.filterButton, 
-            filterActive === false && { backgroundColor: primaryColor, borderColor: primaryColor }
-          ]}
-          onPress={() => setFilterActive(false)}
-        >
-          <ThemedText style={[
-            styles.filterButtonText,
-            filterActive === false && { color: 'white' }
-          ]}>
-            Inactivas
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView style={styles.routesList}>
-        {filteredRoutes.length === 0 ? (
-          <View style={styles.noResultsContainer}>
-            <Ionicons name="search" size={64} color="#ccc" />
-            <ThemedText style={styles.noResultsText}>No se encontraron rutas</ThemedText>
-          </View>
-        ) : (
-          filteredRoutes.map(route => (
-            <ThemedView key={route.id} style={[styles.routeCard, { backgroundColor: cardBackground }]}>
-              <View style={styles.routeHeader}>
-                <View style={styles.routeNameContainer}>
-                  <View 
-                    style={[
-                      styles.statusIndicator, 
-                      { backgroundColor: route.active ? '#4CAF50' : '#F44336' }
-                    ]} 
-                  />
-                  <ThemedText style={styles.routeName}>{route.name}</ThemedText>
-                </View>
-                
-                <TouchableOpacity
-                  onPress={() => toggleRouteStatus(route.id)}
-                >
-                  <Ionicons 
-                    name={route.active ? "pause-circle" : "play-circle"} 
-                    size={30} 
-                    color={route.active ? "#F44336" : "#4CAF50"} 
-                  />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.routeDetails}>
-                <View style={styles.routeDetail}>
-                  <Ionicons name="location" size={16} color={primaryColor} />
-                  <ThemedText style={styles.routeDetailText}>{route.stops} paradas</ThemedText>
-                </View>
-                
-                <View style={styles.routeDetail}>
-                  <Ionicons name="time" size={16} color={primaryColor} />
-                  <ThemedText style={styles.routeDetailText}>{route.schedule}</ThemedText>
-                </View>
-                
-                <View style={styles.routeDetail}>
-                  <Ionicons name="information-circle" size={16} color={primaryColor} />
-                  <ThemedText style={styles.routeDetailText}>
-                    Estado: {route.active ? 'Activo' : 'Inactivo'}
-                  </ThemedText>
-                </View>
-              </View>
-              
-              <View style={styles.routeActions}>
-                <TouchableOpacity 
-                  style={styles.routeActionButton}
-                  onPress={() => editRoute(route.id)}
-                >
-                  <Ionicons name="create-outline" size={20} color={primaryColor} />
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.routeActionButton}
-                  onPress={() => deleteRoute(route.id)}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#F44336" />
-                </TouchableOpacity>
-              </View>
-            </ThemedView>
-          ))
-        )}
-      </ScrollView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 44,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filters: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  filterButtonText: {
-    fontSize: 14,
-  },
-  routesList: {
-    flex: 1,
-  },
-  noResultsContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noResultsText: {
-    marginTop: 16,
-    fontSize: 16,
-    opacity: 0.7,
-  },
-  routeCard: {
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  routeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  routeNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
-  },
-  routeName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  routeDetails: {
-    marginBottom: 12,
-  },
-  routeDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  routeDetailText: {
-    marginLeft: 8,
-  },
-  routeActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    paddingTop: 12,
-  },
-  routeActionButton: {
-    marginLeft: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

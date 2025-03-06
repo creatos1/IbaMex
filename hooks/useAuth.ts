@@ -361,12 +361,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         verifyMfa,
         updateUserProfile,
         changePassword,
-        toggleMfa
+        toggleMfa,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
+  
 };
 
 // Hook para usar la autenticación
