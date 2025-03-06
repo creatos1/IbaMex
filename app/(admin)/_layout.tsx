@@ -1,109 +1,53 @@
 import React, { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function AdminLayout() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
-  const headerBackground = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-  const headerTint = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
 
+  // Verificar si el usuario tiene permisos de administrador
   useEffect(() => {
-    // Redirigir si no es administrador
     if (!isLoading && (!user || user.role !== 'admin')) {
+      // Redireccionar si no es administrador
       router.replace('/');
     }
   }, [user, isLoading, router]);
 
   if (isLoading) {
+    return null; // Muestra un spinner o pantalla de carga
+  }
+
+  // Solo renderizar el contenido si es administrador
+  if (user?.role === 'admin') {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={primaryColor} />
-      </View>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor,
+          },
+          headerTintColor: useThemeColor({ light: '#000', dark: '#fff' }, 'text'),
+        }}
+      >
+        <Stack.Screen 
+          name="index" 
+          options={{ 
+            title: 'Panel de Administración',
+            headerLargeTitle: true, 
+          }} 
+        />
+        <Stack.Screen 
+          name="users" 
+          options={{ 
+            title: 'Gestión de Usuarios',
+            presentation: 'card',
+          }} 
+        />
+      </Stack>
     );
   }
 
-  // Solo mostrar el layout si es un administrador
-  if (!user || user.role !== 'admin') {
-    return null;
-  }
-
-  return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: headerBackground,
-        },
-        headerTintColor: headerTint,
-        headerBackTitle: 'Atrás',
-      }}
-    >
-      <Stack.Screen
-        name="index"
-        options={{
-          title: 'Administración',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="users"
-        options={{
-          title: 'Gestión de Usuarios',
-        }}
-      />
-      <Stack.Screen
-        name="routes"
-        options={{
-          title: 'Gestión de Rutas',
-        }}
-      />
-      <Stack.Screen
-        name="analytics"
-        options={{
-          title: 'Análisis de Datos',
-        }}
-      />
-      <Stack.Screen
-        name="settings"
-        options={{
-          title: 'Configuración',
-        }}
-      />
-      <Stack.Screen
-        name="maintenance"
-        options={{
-          title: 'Mantenimiento',
-        }}
-      />
-      <Stack.Screen
-        name="notifications"
-        options={{
-          title: 'Notificaciones',
-        }}
-      />
-      <Stack.Screen
-        name="drivers"
-        options={{
-          title: 'Gestión de Conductores',
-        }}
-      />
-      <Stack.Screen
-        name="incidents"
-        options={{
-          title: 'Gestión de Incidencias',
-        }}
-      />
-    </Stack>
-  );
+  return null;
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
