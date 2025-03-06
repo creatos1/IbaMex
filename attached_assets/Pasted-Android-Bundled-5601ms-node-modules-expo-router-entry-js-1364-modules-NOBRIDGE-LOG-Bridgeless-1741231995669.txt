@@ -1,0 +1,23 @@
+Android Bundled 5601ms node_modules\expo-router\entry.js (1364 modules)
+ (NOBRIDGE) LOG  Bridgeless mode is enabled
+ INFO 
+ 💡 JavaScript logs will be removed from Metro in React Native 0.77! Please use React Native DevTools as your default tool. Tip: Type j in the terminal to open (requires Google Chrome or Microsoft Edge).
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./(admin)/_layout.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./(admin)/index.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./(admin)/users.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./(tabs)/profile.tsx" is missing the required default export. Ensure a React component is exported as default. [Component 
+Stack]
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./_layout.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack] 
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./driver.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]  
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./index.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]   
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./mfa-verification.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]
+ (NOBRIDGE) ERROR  TypeError: Cannot read property 'origin' of undefined [Component Stack]
+ (NOBRIDGE) WARN  Route "./register.tsx" is missing the required default export. Ensure a React component is exported as default. [Component Stack]
