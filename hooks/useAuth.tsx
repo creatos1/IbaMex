@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
@@ -85,18 +84,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const loadUser = async () => {
       try {
         const token = await getToken();
-        
+
         if (token) {
           // Decodificar el token para obtener la información del usuario
           const decoded = jwtDecode<DecodedToken>(token);
-          
+
           // Verificar si el token ha expirado
           const currentTime = Date.now() / 1000;
           if (decoded.exp < currentTime) {
             await removeToken();
             return;
           }
-          
+
           // Establecer el usuario
           setUser({
             id: decoded.userId,
@@ -112,7 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLoading(false);
       }
     };
-    
+
     loadUser();
   }, []);
 
@@ -120,7 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
@@ -129,13 +128,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error de autenticación');
       }
-      
+
       if (data.requireMfa) {
         // Si se requiere MFA, guardar el token temporal y activar el estado de MFA
         setTempToken(data.tempToken);
@@ -160,27 +159,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = async (username: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       console.log(`Intentando registrar usuario en: ${API_URL}/register`);
-      
+      console.log('Datos enviados:', { username, email, password: '******' });
+
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ username, email, password }),
       });
-      
+
       console.log(`Respuesta recibida, status: ${response.status}`);
-      
-      const data = await response.json();
+
+      let data;
+      try {
+        const text = await response.text();
+        console.log('Respuesta en texto:', text);
+        data = text ? JSON.parse(text) : {};
+      } catch (parseError) {
+        console.error('Error al parsear respuesta:', parseError);
+        throw new Error('Error al procesar la respuesta del servidor');
+      }
+
       console.log('Datos recibidos:', data);
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error de registro');
       }
-      
+
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -197,10 +207,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setError('No hay sesión de MFA activa');
       return false;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/verify-mfa`, {
         method: 'POST',
@@ -210,21 +220,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ code }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Código MFA inválido');
       }
-      
+
       // Guardar el token y establecer el usuario
       await storeToken(data.token);
       setUser(data.user);
-      
+
       // Limpiar estados temporales
       setTempToken(null);
       setNeedsMfa(false);
-      
+
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -238,14 +248,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUserProfile = async (userData: Partial<User>): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const token = await getToken();
-      
+
       if (!token) {
         throw new Error('No estás autenticado');
       }
-      
+
       const response = await fetch(`${API_URL}/user/profile`, {
         method: 'PUT',
         headers: {
@@ -254,16 +264,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify(userData),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al actualizar perfil');
       }
-      
+
       // Actualizar el usuario local
       setUser(prev => prev ? { ...prev, ...userData } : null);
-      
+
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -277,14 +287,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const changePassword = async (oldPassword: string, newPassword: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const token = await getToken();
-      
+
       if (!token) {
         throw new Error('No estás autenticado');
       }
-      
+
       const response = await fetch(`${API_URL}/user/change-password`, {
         method: 'PUT',
         headers: {
@@ -293,13 +303,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ oldPassword, newPassword }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al cambiar contraseña');
       }
-      
+
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -313,14 +323,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const toggleMfa = async (enable: boolean): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const token = await getToken();
-      
+
       if (!token) {
         throw new Error('No estás autenticado');
       }
-      
+
       const response = await fetch(`${API_URL}/user/toggle-mfa`, {
         method: 'PUT',
         headers: {
@@ -329,18 +339,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
         body: JSON.stringify({ enable }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al configurar MFA');
       }
-      
+
       // Si la activación fue exitosa, actualizar el estado del usuario
       if (data.success) {
         setUser(prev => prev ? { ...prev, mfaEnabled: enable } : null);
       }
-      
+
       setIsLoading(false);
       return data.success;
     } catch (err: any) {
@@ -381,10 +391,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 // Hook para usar la autenticación
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error('useAuth debe ser usado dentro de un AuthProvider');
   }
-  
+
   return context;
 };

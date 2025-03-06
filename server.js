@@ -1,8 +1,11 @@
 const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
+const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./api/auth');
+const busRoutes = require('./api/buses');
+const routeRoutes = require('./api/routes');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -13,12 +16,17 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware para CORS
+app.use(cors());
+
 // Middleware para parsear JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configurar rutas de autenticación
+// Configurar rutas
 app.use('/api', authRoutes);
+app.use('/api/buses', busRoutes);
+app.use('/api/routes', routeRoutes);
 
 // Simple health check
 app.get('/health', (req, res) => {

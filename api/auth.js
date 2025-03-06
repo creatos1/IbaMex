@@ -1,4 +1,3 @@
-
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -12,9 +11,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'ibamex-secret-key';
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  
+
   if (!token) return res.status(401).json({ message: 'No token provided' });
-  
+
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.status(403).json({ message: 'Invalid token' });
     req.user = user;
@@ -48,7 +47,7 @@ router.post('/register', [
     const userExists = await User.findOne({ 
       $or: [{ email: email }, { username: username }] 
     });
-    
+
     if (userExists) {
       return res.status(400).json({ message: 'El usuario ya existe' });
     }
@@ -68,7 +67,7 @@ router.post('/register', [
     });
 
     await newUser.save();
-    
+
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
     console.error(err);
@@ -97,10 +96,10 @@ router.post('/login', async (req, res) => {
     if (user.mfaEnabled) {
       // Generar un token temporal para MFA
       const tempToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '5m' });
-      
+
       // Aquí implementaríamos el envío de código por email o SMS
       // Por ahora usamos un código fijo para demostración (123456)
-      
+
       return res.json({ 
         requireMfa: true,
         tempToken,
@@ -142,7 +141,7 @@ router.post('/verify-mfa', async (req, res) => {
   const { code } = req.body;
   const authHeader = req.headers['authorization'];
   const tempToken = authHeader && authHeader.split(' ')[1];
-  
+
   if (!tempToken) {
     return res.status(401).json({ message: 'No se proporcionó token' });
   }
@@ -150,9 +149,9 @@ router.post('/verify-mfa', async (req, res) => {
   try {
     // Verificar el token temporal
     const decoded = jwt.verify(tempToken, JWT_SECRET);
-    
+
     // Buscar el usuario
-    const user = users.find(user => user.id === decoded.userId);
+    const user = await User.findById(decoded.userId); // Corrected to use User model
     if (!user) {
       return res.status(400).json({ message: 'Usuario no encontrado' });
     }
@@ -165,7 +164,7 @@ router.post('/verify-mfa', async (req, res) => {
     // Generar token JWT completo
     const token = jwt.sign(
       { 
-        userId: user.id, 
+        userId: user._id, 
         username: user.username, 
         email: user.email, 
         role: user.role 
@@ -178,7 +177,7 @@ router.post('/verify-mfa', async (req, res) => {
     res.json({ 
       token,
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -187,11 +186,11 @@ router.post('/verify-mfa', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    
+
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token inválido o expirado' });
     }
-    
+
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
@@ -207,12 +206,10 @@ router.put('/user/change-password', authenticateToken, async (req, res) => {
 
   try {
     // Buscar usuario
-    const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-
-    const user = users[userIndex];
 
     // Verificar contraseña antigua
     const isMatch = await bcrypt.compare(oldPassword, user.password);
@@ -232,7 +229,8 @@ router.put('/user/change-password', authenticateToken, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
     // Actualizar contraseña
-    users[userIndex].password = hashedPassword;
+    user.password = hashedPassword;
+    await user.save();
 
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
@@ -252,22 +250,23 @@ router.put('/user/profile', authenticateToken, async (req, res) => {
 
   try {
     // Buscar usuario
-    const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
     // Actualizar datos
-    users[userIndex] = { ...users[userIndex], ...userData };
+    Object.assign(user, userData); // Use Object.assign for safer merging
+    await user.save();
 
     res.json({
       message: 'Perfil actualizado correctamente',
       user: {
-        id: users[userIndex].id,
-        username: users[userIndex].username,
-        email: users[userIndex].email,
-        role: users[userIndex].role,
-        mfaEnabled: users[userIndex].mfaEnabled
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        mfaEnabled: user.mfaEnabled
       }
     });
   } catch (err) {
@@ -287,13 +286,14 @@ router.put('/user/toggle-mfa', authenticateToken, async (req, res) => {
 
   try {
     // Buscar usuario
-    const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
     // Actualizar estado MFA
-    users[userIndex].mfaEnabled = enable;
+    user.mfaEnabled = enable;
+    await user.save();
 
     // En un caso real, aquí generaríamos un código QR para configurar la app
     // o configurar el envío de códigos por email/SMS
@@ -309,22 +309,18 @@ router.put('/user/toggle-mfa', authenticateToken, async (req, res) => {
 });
 
 // Obtener usuarios (solo para admin)
-router.get('/users', authenticateToken, isAdmin, (req, res) => {
-  // Filtrar datos sensibles
-  const filteredUsers = users.map(user => ({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    status: user.status,
-    createdAt: user.createdAt
-  }));
-  
-  res.json(filteredUsers);
+router.get('/users', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find({}, {password: 0}); //Exclude password field
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
 });
 
 // Cambiar rol de usuario (solo para admin)
-router.put('/users/:id/role', authenticateToken, isAdmin, (req, res) => {
+router.put('/users/:id/role', authenticateToken, isAdmin, async (req, res) => {
   const { role } = req.body;
   const { id } = req.params;
 
@@ -334,20 +330,21 @@ router.put('/users/:id/role', authenticateToken, isAdmin, (req, res) => {
 
   try {
     // Buscar usuario
-    const userIndex = users.findIndex(user => user.id === id);
-    if (userIndex === -1) {
+    const user = await User.findById(id);
+    if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
     // Actualizar rol
-    users[userIndex].role = role;
+    user.role = role;
+    await user.save();
 
     res.json({
       message: 'Rol actualizado correctamente',
       user: {
-        id: users[userIndex].id,
-        username: users[userIndex].username,
-        role: users[userIndex].role
+        id: user._id,
+        username: user.username,
+        role: user.role
       }
     });
   } catch (err) {
@@ -357,7 +354,7 @@ router.put('/users/:id/role', authenticateToken, isAdmin, (req, res) => {
 });
 
 // Cambiar estado de usuario (solo para admin)
-router.put('/users/:id/status', authenticateToken, isAdmin, (req, res) => {
+router.put('/users/:id/status', authenticateToken, isAdmin, async (req, res) => {
   const { status } = req.body;
   const { id } = req.params;
 
@@ -367,20 +364,21 @@ router.put('/users/:id/status', authenticateToken, isAdmin, (req, res) => {
 
   try {
     // Buscar usuario
-    const userIndex = users.findIndex(user => user.id === id);
-    if (userIndex === -1) {
+    const user = await User.findById(id);
+    if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
     // Actualizar estado
-    users[userIndex].status = status;
+    user.status = status;
+    await user.save();
 
     res.json({
       message: 'Estado actualizado correctamente',
       user: {
-        id: users[userIndex].id,
-        username: users[userIndex].username,
-        status: users[userIndex].status
+        id: user._id,
+        username: user.username,
+        status: user.status
       }
     });
   } catch (err) {
