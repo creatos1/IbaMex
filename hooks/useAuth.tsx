@@ -36,7 +36,9 @@ interface AuthContextType {
 }
 
 // API URL
-const API_URL = window.location.origin + '/api';
+const API_URL = Platform.OS === 'web' 
+  ? window.location.origin + '/api' 
+  : 'http://localhost:3000/api'; // Usar la URL base del servidor para entornos nativos
 
 // Crear el contexto
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -1,60 +1,66 @@
-import React, { useEffect } from 'react';
-import { Stack, useRouter } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+
+import React from 'react';
+import { Text, View, StyleSheet, Button } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import LoginScreen from '@/components/auth/LoginScreen';
-import UserDashboard from '@/components/auth/UserDashboard';
-import DriverDashboard from '@/components/auth/DriverDashboard';
-import AdminDashboard from '@/components/auth/AdminDashboard';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { AuthProvider } from '@/hooks/useAuth';
 
-
-export default function Home() {
-  const { user, isLoading } = useAuth();
+export default function Index() {
   const router = useRouter();
-  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
-
-  useEffect(() => {
-    // Cuando el usuario esté autenticado, redirigirlo a su respectivo dashboard
-    if (user && user.role === 'admin') {
-      router.replace('/(admin)/');
-    } else if (user && user.role === 'driver') {
-      router.replace('/driver');
-    }
-  }, [user, router]);
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={primaryColor} />
+      <View style={styles.container}>
+        <Text>Cargando...</Text>
       </View>
     );
   }
 
-  if (!user) {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <LoginScreen />
-      </>
-    );
-  }
-
-  // Mostrar dashboard según el rol del usuario
-  if (user.role === 'admin') {
-    return <AdminDashboard />;
-  } else if (user.role === 'driver') {
-    return <DriverDashboard />;
-  } else {
-    return <UserDashboard />;
-  }
+  return (
+    <View style={styles.container}>
+      {user ? (
+        <>
+          <Text style={styles.title}>¡Bienvenido, {user.username}!</Text>
+          <Button 
+            title="Ir al Perfil" 
+            onPress={() => router.push('/(tabs)/profile')}
+          />
+        </>
+      ) : (
+        <>
+          <Text style={styles.title}>Bienvenido a IbaMex</Text>
+          <View style={styles.buttonContainer}>
+            <Button 
+              title="Iniciar Sesión" 
+              onPress={() => router.push('/login')}
+            />
+            <Button 
+              title="Registrarse" 
+              onPress={() => router.push('/register')}
+            />
+          </View>
+        </>
+      )}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  buttonContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
   },
 });
