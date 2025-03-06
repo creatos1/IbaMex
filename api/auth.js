@@ -3,10 +3,9 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { check, validationResult } = require('express-validator');
+const User = require('../models/User');
 const router = express.Router();
 
-// Base de datos temporal - Reemplazar por una base de datos real
-let users = [];
 const JWT_SECRET = process.env.JWT_SECRET || 'ibamex-secret-key';
 
 // Middleware para validar token
@@ -46,7 +45,10 @@ router.post('/register', [
 
   try {
     // Verificar si el usuario ya existe
-    const userExists = users.find(user => user.email === email || user.username === username);
+    const userExists = await User.findOne({ 
+      $or: [{ email: email }, { username: username }] 
+    });
+    
     if (userExists) {
       return res.status(400).json({ message: 'El usuario ya existe' });
     }
@@ -56,18 +58,16 @@ router.post('/register', [
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Crear nuevo usuario
-    const newUser = {
-      id: Date.now().toString(),
+    const newUser = new User({
       username,
       email,
       password: hashedPassword,
       role: 'user', // Por defecto todos son usuarios normales
       mfaEnabled: false,
-      status: 'active',
-      createdAt: new Date()
-    };
+      status: 'active'
+    });
 
-    users.push(newUser);
+    await newUser.save();
     
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
@@ -82,7 +82,7 @@ router.post('/login', async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = users.find(user => user.email === email);
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Credenciales inválidas' });
     }
@@ -96,7 +96,7 @@ router.post('/login', async (req, res) => {
     // Verificar si el usuario tiene MFA habilitado
     if (user.mfaEnabled) {
       // Generar un token temporal para MFA
-      const tempToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '5m' });
+      const tempToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '5m' });
       
       // Aquí implementaríamos el envío de código por email o SMS
       // Por ahora usamos un código fijo para demostración (123456)
@@ -111,7 +111,7 @@ router.post('/login', async (req, res) => {
     // Generar token JWT
     const token = jwt.sign(
       { 
-        userId: user.id, 
+        userId: user._id, 
         username: user.username, 
         email: user.email, 
         role: user.role 
@@ -124,7 +124,7 @@ router.post('/login', async (req, res) => {
     res.json({ 
       token,
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
         email: user.email,
         role: user.role,

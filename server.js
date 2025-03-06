@@ -1,6 +1,14 @@
 const express = require('express');
 const path = require('path');
+const dotenv = require('dotenv');
+const connectDB = require('./config/db');
 const authRoutes = require('./api/auth');
+
+// Cargar variables de entorno
+dotenv.config();
+
+// Conectar a MongoDB
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +33,10 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, 'web-build', 'index.html'));
   });
 }
+
+// Iniciar el servicio de contador de pasajeros
+const BusCounterService = require('./services/busCounterService');
+const busCounterService = new BusCounterService();
 
 // Iniciar el servidor
 app.listen(PORT, '0.0.0.0', () => {
