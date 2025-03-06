@@ -16,7 +16,7 @@ author = 4584120
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "npm run start & node server.js"
 
 [[workflows.workflow]]
 name = "Dev Server"
@@ -29,6 +29,10 @@ args = "node server.js"
 [[ports]]
 localPort = 8081
 externalPort = 80
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
 
 [[ports]]
 localPort = 8082
