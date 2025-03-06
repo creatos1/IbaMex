@@ -37,7 +37,7 @@ interface AuthContextType {
 }
 
 // API URL
-const API_URL = '/api';
+const API_URL = 'http://localhost:3000/api';
 
 // Crear el contexto
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -1,28 +1,24 @@
 
 const express = require('express');
-const cors = require('cors');
-const authRoutes = require('./api/auth');
 const path = require('path');
+const authRoutes = require('./api/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// Middleware para parsear JSON
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Rutas
+// Configurar rutas de autenticación
 app.use('/api', authRoutes);
 
-// Servir archivos estáticos en producción
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-  });
-}
+// Simple health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 
-// Iniciar servidor
+// Iniciar el servidor
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Servidor corriendo en http://0.0.0.0:${PORT}`);
 });
