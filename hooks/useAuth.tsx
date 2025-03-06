@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode, FC } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -32,7 +31,9 @@ interface AuthContextType {
 // API URL
 const API_URL = Platform.OS === 'web' 
   ? window.location.origin + '/api' 
-  : 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
+  : __DEV__ 
+    ? 'http://10.0.2.2:3000/api' // Para emulador Android
+    : 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
 
 // Crear el contexto
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,13 +56,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     const loadToken = async () => {
       try {
         const storedToken = await AsyncStorage.getItem('auth_token');
-        
+
         if (storedToken) {
           try {
             // Validar y decodificar el token
             const decoded = jwtDecode<any>(storedToken);
             const currentTime = Date.now() / 1000;
-            
+
             if (decoded.exp && decoded.exp < currentTime) {
               // Token expirado
               console.log('Token expirado, cerrando sesión');
@@ -97,10 +98,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (username: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       console.log(`Intentando registrar usuario en: ${API_URL}/register`);
-      
+
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
@@ -108,16 +109,19 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify({ username, email, password }),
       });
-      
+
       console.log(`Respuesta recibida, status: ${response.status}`);
-      
+
       const data = await response.json();
       console.log('Datos recibidos:', data);
-      
+
       if (!response.ok) {
+        if (data.errors && Array.isArray(data.errors)) {
+          throw new Error(data.errors[0].msg || 'Error de registro');
+        }
         throw new Error(data.message || 'Error de registro');
       }
-      
+
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -134,7 +138,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     setRequireMfa(false);
     setTempToken(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
@@ -143,13 +147,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error de inicio de sesión');
       }
-      
+
       // Verificar si se requiere MFA
       if (data.requireMfa) {
         setRequireMfa(true);
@@ -157,7 +161,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(false);
         return true;
       }
-      
+
       // Guardar token y datos de usuario
       await AsyncStorage.setItem('auth_token', data.token);
       setToken(data.token);
@@ -177,10 +181,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       setError('No hay token temporal disponible');
       return false;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/verify-mfa`, {
         method: 'POST',
@@ -190,13 +194,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify({ code }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error de verificación MFA');
       }
-      
+
       // Guardar token y datos de usuario
       await AsyncStorage.setItem('auth_token', data.token);
       setToken(data.token);
@@ -232,10 +236,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       setError('No hay sesión activa');
       return false;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/user/profile`, {
         method: 'PUT',
@@ -245,13 +249,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify(userData),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al actualizar perfil');
       }
-      
+
       // Actualizar datos de usuario
       setUser(prev => prev ? { ...prev, ...data.user } : data.user);
       setIsLoading(false);
@@ -269,10 +273,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       setError('No hay sesión activa');
       return false;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/user/change-password`, {
         method: 'PUT',
@@ -282,13 +286,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify({ oldPassword, newPassword }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al cambiar contraseña');
       }
-      
+
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -304,10 +308,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       setError('No hay sesión activa');
       return false;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_URL}/user/toggle-mfa`, {
         method: 'PUT',
@@ -317,13 +321,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         },
         body: JSON.stringify({ enable }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Error al cambiar configuración MFA');
       }
-      
+
       // Actualizar estado MFA del usuario
       setUser(prev => prev ? { ...prev, mfaEnabled: enable } : null);
       setIsLoading(false);
@@ -361,11 +365,11 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 // Hook personalizado
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error('useAuth debe usarse dentro de un AuthProvider');
   }
-  
+
   return context;
 };
 

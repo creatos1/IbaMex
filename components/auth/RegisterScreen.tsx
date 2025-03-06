@@ -1,84 +1,142 @@
 
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { ThemedText } from '../ThemedText';
-import { ThemedView } from '../ThemedView';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { 
+  View, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ScrollView,
+  ActivityIndicator,
+  useColorScheme,
+  Platform,
+  KeyboardAvoidingView
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemedText } from "c:/Users/52449/Downloads/IbaMex (6)/IbaMex/components/ThemedText";
+import useAuth from '@/hooks/useAuth';
+import { Colors } from "c:/Users/52449/Downloads/IbaMex (6)/IbaMex/constants/Colors";
 
-export default function RegisterScreen() {
+const RegisterScreen = () => {
+  const router = useRouter();
+  const { signUp, error: authError, isLoading } = useAuth();
+  const colorScheme = useColorScheme();
+  
+  // Estados locales
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [error, setError] = useState(authError);
+  const [errors, setErrors] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
   
-  const router = useRouter();
-  const { register, isLoading, error } = useAuth();
+  // Colores según el tema
+  const primaryColor = Colors[colorScheme ?? 'light'].tint;
+  const backgroundColor = colorScheme === 'dark' ? '#121212' : '#f5f5f5';
+  const textColor = colorScheme === 'dark' ? '#ffffff' : '#000000';
+  const inputBackground = colorScheme === 'dark' ? '#333' : '#fff';
   
-  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-  const inputBackground = useThemeColor({ light: '#f0f0f0', dark: '#2a2a2a' }, 'background');
-  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
-  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
-
-  // Validar campos
-  const validate = () => {
-    const newErrors: {[key: string]: string} = {};
+  // Validación de campos
+  const validateFields = () => {
+    const newErrors = {
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+    };
+    let isValid = true;
     
-    if (!username) newErrors.username = 'El nombre de usuario es requerido';
-    else if (username.length < 3) newErrors.username = 'El nombre de usuario debe tener al menos 3 caracteres';
-    
-    if (!email) newErrors.email = 'El correo electrónico es requerido';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'El correo electrónico no es válido';
-    
-    if (!password) newErrors.password = 'La contraseña es requerida';
-    else if (password.length < 8) newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
-    else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      newErrors.password = 'La contraseña debe contener al menos una letra mayúscula, una minúscula y un número';
+    // Validar nombre de usuario
+    if (!username.trim()) {
+      newErrors.username = 'El nombre de usuario es requerido';
+      isValid = false;
+    } else if (username.length < 3) {
+      newErrors.username = 'El nombre de usuario debe tener al menos 3 caracteres';
+      isValid = false;
     }
     
-    if (password !== confirmPassword) newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    // Validar email
+    if (!email.trim()) {
+      newErrors.email = 'El correo electrónico es requerido';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Ingresa un correo electrónico válido';
+      isValid = false;
+    }
+    
+    // Validar contraseña
+    if (!password) {
+      newErrors.password = 'La contraseña es requerida';
+      isValid = false;
+    } else if (password.length < 6) {
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+      isValid = false;
+    }
+    
+    // Validar confirmación de contraseña
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+      isValid = false;
+    }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return isValid;
   };
-
+  
+  // Manejar registro
   const handleRegister = async () => {
-    if (!validate()) return;
+    if (!validateFields()) {
+      return;
+    }
     
-    const success = await register(username, email, password);
-    
-    if (success) {
-      Alert.alert(
-        "Registro exitoso", 
-        "Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.",
-        [{ text: "OK", onPress: () => router.replace('/') }]
-      );
+    try {
+      console.log('Intentando registrar usuario...');
+      const success = await signUp(username, email, password);
+      
+      if (success) {
+        console.log('Registro exitoso, redirigiendo a login');
+        // Redirigir a la pantalla de login
+        router.push('/login');
+      } else {
+        setError(authError || 'Error durante el registro');
+      }
+    } catch (err) {
+      console.error('Error en handleRegister:', err);
+      setError('Ha ocurrido un error inesperado');
     }
   };
-
+  
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollView}>
-        <View style={styles.titleContainer}>
-          <ThemedText style={styles.title}>Crear cuenta</ThemedText>
-          <ThemedText style={styles.subtitle}>Regístrate para acceder a todas las funciones</ThemedText>
-        </View>
-        
-        <View style={styles.form}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        style={{ backgroundColor: backgroundColor }}
+      >
+        <View style={[styles.container, { backgroundColor: backgroundColor }]}>
+          <ThemedText style={styles.title}>Crear Cuenta</ThemedText>
+          <ThemedText style={styles.subtitle}>Regístrate para comenzar</ThemedText>
+          
+          {/* Nombre de usuario */}
           <View style={styles.inputContainer}>
             <ThemedText style={styles.label}>Nombre de usuario</ThemedText>
             <TextInput
               style={[
-                styles.input,
+                styles.input, 
                 { backgroundColor: inputBackground, color: textColor },
-                errors.username ? styles.inputError : {}
+                errors.username ? styles.inputError : null
               ]}
-              placeholder="Ingresa tu nombre de usuario"
               placeholderTextColor="#888"
+              placeholder="Ingresa tu nombre de usuario"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -88,49 +146,52 @@ export default function RegisterScreen() {
             ) : null}
           </View>
           
+          {/* Email */}
           <View style={styles.inputContainer}>
             <ThemedText style={styles.label}>Correo electrónico</ThemedText>
             <TextInput
               style={[
-                styles.input,
+                styles.input, 
                 { backgroundColor: inputBackground, color: textColor },
-                errors.email ? styles.inputError : {}
+                errors.email ? styles.inputError : null
               ]}
-              placeholder="Ingresa tu correo electrónico"
               placeholderTextColor="#888"
+              placeholder="Ingresa tu correo electrónico"
               value={email}
               onChangeText={setEmail}
-              autoCapitalize="none"
               keyboardType="email-address"
+              autoCapitalize="none"
             />
             {errors.email ? (
               <ThemedText style={styles.errorText}>{errors.email}</ThemedText>
             ) : null}
           </View>
           
+          {/* Contraseña */}
           <View style={styles.inputContainer}>
             <ThemedText style={styles.label}>Contraseña</ThemedText>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[
+                  styles.input, 
                   styles.passwordInput,
                   { backgroundColor: inputBackground, color: textColor },
-                  errors.password ? styles.inputError : {}
+                  errors.password ? styles.inputError : null
                 ]}
-                placeholder="Ingresa tu contraseña"
                 placeholderTextColor="#888"
+                placeholder="Crea tu contraseña"
+                secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry={!showPassword}
               />
-              <TouchableOpacity 
-                style={styles.eyeIcon} 
+              <TouchableOpacity
+                style={styles.visibilityToggle}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Ionicons 
-                  name={showPassword ? 'eye-off' : 'eye'} 
-                  size={24} 
-                  color="#888" 
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color="#777"
                 />
               </TouchableOpacity>
             </View>
@@ -139,20 +200,24 @@ export default function RegisterScreen() {
             ) : null}
           </View>
           
+          {/* Confirmar Contraseña */}
           <View style={styles.inputContainer}>
             <ThemedText style={styles.label}>Confirmar contraseña</ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, color: textColor },
-                errors.confirmPassword ? styles.inputError : {}
-              ]}
-              placeholder="Confirma tu contraseña"
-              placeholderTextColor="#888"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showPassword}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[
+                  styles.input, 
+                  styles.passwordInput,
+                  { backgroundColor: inputBackground, color: textColor },
+                  errors.confirmPassword ? styles.inputError : null
+                ]}
+                placeholderTextColor="#888"
+                placeholder="Confirma tu contraseña"
+                secureTextEntry={!showPassword}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+            </View>
             {errors.confirmPassword ? (
               <ThemedText style={styles.errorText}>{errors.confirmPassword}</ThemedText>
             ) : null}
@@ -168,7 +233,7 @@ export default function RegisterScreen() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="white" />
             ) : (
               <ThemedText style={styles.buttonText}>Registrarse</ThemedText>
             )}
@@ -176,41 +241,35 @@ export default function RegisterScreen() {
           
           <View style={styles.loginContainer}>
             <ThemedText>¿Ya tienes una cuenta? </ThemedText>
-            <TouchableOpacity onPress={() => router.replace('/')}>
-              <ThemedText style={[styles.loginText, { color: primaryColor }]}>
-                Iniciar sesión
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <ThemedText style={{ color: primaryColor, fontWeight: 'bold' }}>
+                Inicia sesión
               </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-    </ThemedView>
+    </KeyboardAvoidingView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  },
-  scrollView: {
-    flexGrow: 1,
     justifyContent: 'center',
-  },
-  titleContainer: {
-    marginBottom: 30,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    opacity: 0.8,
-  },
-  form: {
-    width: '100%',
+    marginBottom: 30,
+    textAlign: 'center',
+    opacity: 0.7,
   },
   inputContainer: {
     marginBottom: 16,
@@ -220,60 +279,57 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   input: {
-    width: '100%',
-    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 8,
-    paddingHorizontal: 15,
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  passwordInput: {
-    flex: 1,
-    height: 50,
-    borderRadius: 8,
-    paddingHorizontal: 15,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 15,
+    padding: 12,
+    fontSize: 16,
   },
   inputError: {
-    borderWidth: 1,
-    borderColor: '#ff4d4f',
+    borderColor: '#ff3b30',
   },
   errorText: {
-    color: '#ff4d4f',
+    color: '#ff3b30',
     fontSize: 12,
     marginTop: 4,
   },
   serverError: {
-    color: '#ff4d4f',
+    color: '#ff3b30',
     fontSize: 14,
     marginBottom: 16,
     textAlign: 'center',
   },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 40,
+  },
+  visibilityToggle: {
+    position: 'absolute',
+    right: 10,
+    top: 12,
+    height: 24,
+    width: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   button: {
-    width: '100%',
-    height: 50,
+    padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 10,
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
     fontWeight: 'bold',
+    fontSize: 16,
   },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
   },
-  loginText: {
-    fontWeight: 'bold',
-  },
 });
+
+export default RegisterScreen;

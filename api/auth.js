@@ -70,8 +70,11 @@ router.post('/register', [
 
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Error en el registro de usuario:', err);
+    res.status(500).json({ 
+      message: 'Error en el servidor', 
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
   }
 });
 

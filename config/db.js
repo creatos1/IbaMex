@@ -3,25 +3,17 @@ const mongoose = require('mongoose');
 
 // Opciones de conexión
 const options = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
   maxPoolSize: 10,
   heartbeatFrequencyMS: 10000,
-  retryWrites: true,
-  w: 'majority'
 };
 
 // Función de conexión con reintentos
 const connectDB = async (retryCount = 5) => {
-  const uri = process.env.MONGODB_URI;
+  // Usar la URI de Replit MongoDB si está disponible, o la variable de entorno
+  const uri = process.env.REPLIT_DB_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/ibamex';
   
-  if (!uri) {
-    console.error('ERROR: La variable de entorno MONGODB_URI no está definida');
-    process.exit(1);
-  }
-
   try {
     console.log('Conectando a MongoDB...');
     await mongoose.connect(uri, options);
@@ -56,7 +48,8 @@ const connectDB = async (retryCount = 5) => {
       setTimeout(() => connectDB(retryCount - 1), 5000);
     } else {
       console.error('Máximo número de reintentos alcanzado. No se pudo conectar a MongoDB.');
-      process.exit(1);
+      // En lugar de terminar el proceso, intentaremos continuar
+      console.log('Intentando continuar sin conexión a base de datos...');
     }
   }
 };

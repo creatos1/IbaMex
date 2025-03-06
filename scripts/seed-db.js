@@ -217,11 +217,11 @@ const seedData = async () => {
   }
 };
 
-// Ejecutar sembrado
+// // Ejecutar sembrado
 const run = async () => {
-  const connected = await connectDB();
-  
-  if (connected) {
+  try {
+    await connectDB();
+    console.log('Conexión establecida, iniciando sembrado de datos...');
     const success = await seedData();
     
     if (success) {
@@ -229,17 +229,21 @@ const run = async () => {
     } else {
       console.error('Error durante el proceso de sembrado');
     }
-  }
-  
-  // Cerrar conexión
-  try {
-    await mongoose.connection.close();
-    console.log('Conexión a MongoDB cerrada');
-    process.exit(success ? 0 : 1);
+    
+    // Cerrar conexión
+    try {
+      await mongoose.connection.close();
+      console.log('Conexión a MongoDB cerrada');
+      process.exit(success ? 0 : 1);
+    } catch (err) {
+      console.error('Error al cerrar la conexión:', err);
+      process.exit(1);
+    }
   } catch (err) {
-    console.error('Error al cerrar la conexión:', err);
+    console.error('Error en el proceso de sembrado:', err);
     process.exit(1);
-  }
-};
+  
+}xit(1)
+  };
 
 run();
