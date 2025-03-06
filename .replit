@@ -1,5 +1,5 @@
 modules = ["nodejs-20"]
-run = "npx expo start --android"
+run = "npx expo start"
 
 [nix]
 channel = "stable-24_05"
