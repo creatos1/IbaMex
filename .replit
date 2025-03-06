@@ -16,7 +16,7 @@ author = 4584120
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run start & node server.js"
+args = "node server.js"
 
 [[workflows.workflow]]
 name = "Dev Server"
