@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { jwtDecode } from 'jwt-decode';
@@ -349,20 +348,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
   };
 
+  // Usar useMemo para evitar que el objeto cambie en cada renderizado
+  const contextValue = useMemo(() => ({
+    user,
+    isLoading,
+    error,
+    needsMfa,
+    login,
+    register,
+    logout,
+    verifyMfa,
+    updateUserProfile,
+    changePassword,
+    toggleMfa
+  }), [user, isLoading, error, needsMfa]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      error,
-      needsMfa,
-      login,
-      register,
-      logout,
-      verifyMfa,
-      updateUserProfile,
-      changePassword,
-      toggleMfa
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
