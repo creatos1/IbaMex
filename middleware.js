@@ -1,74 +1,62 @@
-
-// Middleware para verificar la autenticación y los roles en el servidor
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jwt-decode';
 
-// Define las rutas que requieren autenticación
-const protectedPaths = [
-  // Rutas de administración
-  '/api/admin',
-  '/api/user/all',
-  '/api/analytics',
-  
-  // Rutas de usuario
-  '/api/profile',
-  '/api/user',
-];
-
-// Define los roles requeridos para ciertas rutas
-const roleRequirements = {
-  '/api/admin': ['admin'],
-  '/api/user/all': ['admin'],
-  '/api/analytics': ['admin'],
+// Define rutas protegidas por rol
+const PROTECTED_ROUTES = {
+  admin: ['/admin', '/(admin)'],
+  driver: ['/driver']
 };
 
 export function middleware(request) {
+  // Obtener token del localStorage (solo funciona en el cliente)
+  // Para el middleware, verificamos si hay una cookie de token
+  const token = request.cookies.get('userToken')?.value;
+
   const { pathname } = request.nextUrl;
-  
-  // Verificar si la ruta está protegida
-  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
-  
-  if (isProtectedPath) {
-    // Obtener token de la cabecera Authorization
-    const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
+
+  // Si no hay token y es una ruta protegida, redirigir al login
+  if (!token) {
+    // Verificar si es una ruta protegida
+    const isAdminRoute = PROTECTED_ROUTES.admin.some(route => pathname.startsWith(route));
+    const isDriverRoute = PROTECTED_ROUTES.driver.some(route => pathname.startsWith(route));
+
+    if (isAdminRoute || isDriverRoute) {
+      return NextResponse.redirect(new URL('/', request.url));
     }
-    
-    const token = authHeader.split(' ')[1];
-    
-    try {
-      // Verificar y decodificar el token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      
-      // Verificar roles si es necesario
-      const requiredRoles = roleRequirements[pathname];
-      
-      if (requiredRoles && !requiredRoles.includes(decoded.role)) {
-        return NextResponse.json(
-          { error: 'Acceso denegado' },
-          { status: 403 }
-        );
-      }
-      
-      // Continuar con la solicitud
-      return NextResponse.next();
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Token inválido' },
-        { status: 401 }
-      );
-    }
+
+    // Si no es ruta protegida, continuar
+    return NextResponse.next();
   }
-  
-  // Si no es una ruta protegida, continuar
-  return NextResponse.next();
+
+  try {
+    // Decodificar token
+    const decodedToken = jwt.jwtDecode(token);
+    const userRole = decodedToken.role;
+
+    // Verificar permisos por rol
+    if (pathname.startsWith('/(admin)') && userRole !== 'admin') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    if (pathname.startsWith('/driver') && userRole !== 'driver') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // Usuario autenticado con los permisos correctos, continuar
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Error verificando token:', error);
+
+    // Error de verificación, redirigir al login
+    return NextResponse.redirect(new URL('/', request.url));
+  }
 }
 
+// Solo verificar rutas específicas
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    '/(admin)/:path*',
+    '/driver',
+    '/(tabs)/profile',
+  ],
 };

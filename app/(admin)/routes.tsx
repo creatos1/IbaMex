@@ -778,3 +778,332 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
 });
+import React, { useState } from 'react';
+import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
+
+interface Route {
+  id: string;
+  name: string;
+  stops: number;
+  schedule: string;
+  active: boolean;
+}
+
+export default function RoutesManagement() {
+  const [routes, setRoutes] = useState<Route[]>([
+    { id: 'r1', name: 'R1-Centro', stops: 12, schedule: '06:00 - 22:00', active: true },
+    { id: 'r2', name: 'R2-Norte', stops: 8, schedule: '06:30 - 21:00', active: true },
+    { id: 'r3', name: 'R3-Universidad', stops: 15, schedule: '07:00 - 23:00', active: true },
+    { id: 'r4', name: 'R4-Aeropuerto', stops: 6, schedule: '05:00 - 00:00', active: true },
+    { id: 'r5', name: 'R5-Industrial', stops: 10, schedule: '05:30 - 20:00', active: false },
+  ]);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterActive, setFilterActive] = useState<boolean | null>(null);
+  
+  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
+  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
+  const cardBackground = useThemeColor({ light: '#f0f0f0', dark: '#2a2a2a' }, 'background');
+  const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
+  
+  const filteredRoutes = routes.filter(route => {
+    const matchesSearch = route.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterActive === null || route.active === filterActive;
+    return matchesSearch && matchesFilter;
+  });
+  
+  const toggleRouteStatus = (id: string) => {
+    setRoutes(routes.map(route => 
+      route.id === id ? { ...route, active: !route.active } : route
+    ));
+  };
+  
+  const addNewRoute = () => {
+    Alert.alert('Añadir Ruta', 'Funcionalidad en desarrollo');
+  };
+  
+  const editRoute = (id: string) => {
+    Alert.alert('Editar Ruta', `Editando ruta con ID: ${id}`);
+  };
+  
+  const deleteRoute = (id: string) => {
+    Alert.alert(
+      'Eliminar Ruta',
+      '¿Estás seguro de que deseas eliminar esta ruta?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Eliminar', 
+          style: 'destructive',
+          onPress: () => {
+            setRoutes(routes.filter(route => route.id !== id));
+          }
+        }
+      ]
+    );
+  };
+  
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <View style={[styles.searchBar, { backgroundColor: cardBackground }]}>
+          <Ionicons name="search" size={20} color="#888" />
+          <TextInput
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder="Buscar rutas..."
+            placeholderTextColor="#888"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
+          {searchTerm ? (
+            <TouchableOpacity onPress={() => setSearchTerm('')}>
+              <Ionicons name="close-circle" size={20} color="#888" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: primaryColor }]}
+          onPress={addNewRoute}
+        >
+          <Ionicons name="add" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+      
+      <View style={styles.filters}>
+        <TouchableOpacity 
+          style={[
+            styles.filterButton, 
+            filterActive === null && { backgroundColor: primaryColor, borderColor: primaryColor }
+          ]}
+          onPress={() => setFilterActive(null)}
+        >
+          <ThemedText style={[
+            styles.filterButtonText,
+            filterActive === null && { color: 'white' }
+          ]}>
+            Todas
+          </ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.filterButton, 
+            filterActive === true && { backgroundColor: primaryColor, borderColor: primaryColor }
+          ]}
+          onPress={() => setFilterActive(true)}
+        >
+          <ThemedText style={[
+            styles.filterButtonText,
+            filterActive === true && { color: 'white' }
+          ]}>
+            Activas
+          </ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.filterButton, 
+            filterActive === false && { backgroundColor: primaryColor, borderColor: primaryColor }
+          ]}
+          onPress={() => setFilterActive(false)}
+        >
+          <ThemedText style={[
+            styles.filterButtonText,
+            filterActive === false && { color: 'white' }
+          ]}>
+            Inactivas
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+      
+      <ScrollView style={styles.routesList}>
+        {filteredRoutes.length === 0 ? (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="search" size={64} color="#ccc" />
+            <ThemedText style={styles.noResultsText}>No se encontraron rutas</ThemedText>
+          </View>
+        ) : (
+          filteredRoutes.map(route => (
+            <ThemedView key={route.id} style={[styles.routeCard, { backgroundColor: cardBackground }]}>
+              <View style={styles.routeHeader}>
+                <View style={styles.routeNameContainer}>
+                  <View 
+                    style={[
+                      styles.statusIndicator, 
+                      { backgroundColor: route.active ? '#4CAF50' : '#F44336' }
+                    ]} 
+                  />
+                  <ThemedText style={styles.routeName}>{route.name}</ThemedText>
+                </View>
+                
+                <TouchableOpacity
+                  onPress={() => toggleRouteStatus(route.id)}
+                >
+                  <Ionicons 
+                    name={route.active ? "pause-circle" : "play-circle"} 
+                    size={30} 
+                    color={route.active ? "#F44336" : "#4CAF50"} 
+                  />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.routeDetails}>
+                <View style={styles.routeDetail}>
+                  <Ionicons name="location" size={16} color={primaryColor} />
+                  <ThemedText style={styles.routeDetailText}>{route.stops} paradas</ThemedText>
+                </View>
+                
+                <View style={styles.routeDetail}>
+                  <Ionicons name="time" size={16} color={primaryColor} />
+                  <ThemedText style={styles.routeDetailText}>{route.schedule}</ThemedText>
+                </View>
+                
+                <View style={styles.routeDetail}>
+                  <Ionicons name="information-circle" size={16} color={primaryColor} />
+                  <ThemedText style={styles.routeDetailText}>
+                    Estado: {route.active ? 'Activo' : 'Inactivo'}
+                  </ThemedText>
+                </View>
+              </View>
+              
+              <View style={styles.routeActions}>
+                <TouchableOpacity 
+                  style={styles.routeActionButton}
+                  onPress={() => editRoute(route.id)}
+                >
+                  <Ionicons name="create-outline" size={20} color={primaryColor} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.routeActionButton}
+                  onPress={() => deleteRoute(route.id)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#F44336" />
+                </TouchableOpacity>
+              </View>
+            </ThemedView>
+          ))
+        )}
+      </ScrollView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filters: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  filterButtonText: {
+    fontSize: 14,
+  },
+  routesList: {
+    flex: 1,
+  },
+  noResultsContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    marginTop: 16,
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  routeCard: {
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  routeNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  routeName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  routeDetails: {
+    marginBottom: 12,
+  },
+  routeDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  routeDetailText: {
+    marginLeft: 8,
+  },
+  routeActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    paddingTop: 12,
+  },
+  routeActionButton: {
+    marginLeft: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

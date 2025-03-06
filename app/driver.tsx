@@ -1,60 +1,63 @@
 
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { useAuth } from '@/hooks/useAuth';
+import DriverDashboard from '@/components/auth/DriverDashboard';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function DriverScreen() {
-  const router = useRouter();
-  
+  const { user, isLoading } = useAuth();
+  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={primaryColor} />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText style={styles.text}>No has iniciado sesión</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (user.role !== 'driver') {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText style={styles.text}>No tienes permisos para acceder a esta página</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.greeting}>Hola, conductor</ThemedText>
-      <ThemedText style={styles.message}>
-        Bienvenido a la aplicación de IbaMex. Esta es tu pantalla principal.
-      </ThemedText>
-      
-      <TouchableOpacity 
-        style={styles.button}
-        onPress={() => router.replace('/')}
-      >
-        <ThemedText style={styles.buttonText}>Cerrar Sesión</ThemedText>
-      </TouchableOpacity>
-    </ThemedView>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <DriverDashboard />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
-  greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  message: {
-    fontSize: 16,
+  text: {
+    fontSize: 18,
     textAlign: 'center',
-    marginBottom: 40,
-  },
-  button: {
-    width: '100%',
-    maxWidth: 200,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: '#0a7ea4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });

@@ -1,136 +1,109 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ThemedText } from '@/components/ThemedText';
-
-export default function AdminLayout() {
-  const router = useRouter();
-  const tintColor = useThemeColor({ light: '#0a7ea4', dark: '#fff' }, 'tint');
-  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-  const tabIconDefault = useThemeColor({ light: '#687076', dark: '#9BA1A6' }, 'tabIconDefault');
-  
-  // Función para cerrar sesión
-  const handleLogout = () => {
-    router.replace('/');
-  };
-  
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: tintColor,
-        tabBarInactiveTintColor: tabIconDefault,
-        tabBarStyle: {
-          backgroundColor: backgroundColor,
-        },
-        headerStyle: {
-          backgroundColor: '#87CEEB',
-        },
-        headerTintColor: tintColor,
-        headerRight: () => (
-          <TouchableOpacity 
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <ThemedText style={styles.logoutText}>Cerrar Sesión</ThemedText>
-          </TouchableOpacity>
-        ),
-      }}>
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="routes"
-        options={{
-          title: 'Gestión de Rutas',
-          tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analítica',
-          tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} />,
-        }}
-      />
-    </Tabs>
-  );
-}
-
-const styles = StyleSheet.create({
-  logoutButton: {
-    backgroundColor: '#FF5733', // Color contrastante con azul cielo
-    borderRadius: 10,
-    padding: 8,
-    marginRight: 10,
-  },
-  logoutText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-});
 import React, { useEffect } from 'react';
-import { Tabs } from 'expo-router';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function AdminLayout() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
+  const headerBackground = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
+  const headerTint = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
 
-  // Protección de rutas para administradores
   useEffect(() => {
+    // Redirigir si no es administrador
     if (!isLoading && (!user || user.role !== 'admin')) {
-      // Redirigir si no es administrador
       router.replace('/');
     }
   }, [user, isLoading, router]);
 
-  // Si está cargando, no mostrar nada aún
   if (isLoading) {
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={primaryColor} />
+      </View>
+    );
   }
 
-  // Si no hay usuario o no es admin, no renderizar el layout
+  // Solo mostrar el layout si es un administrador
   if (!user || user.role !== 'admin') {
     return null;
   }
 
   return (
-    <Tabs
+    <Stack
       screenOptions={{
-        tabBarActiveTintColor: '#0A84FF',
+        headerStyle: {
+          backgroundColor: headerBackground,
+        },
+        headerTintColor: headerTint,
+        headerBackTitle: 'Atrás',
       }}
     >
-      <Tabs.Screen
-        name="dashboard"
+      <Stack.Screen
+        name="index"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
+          title: 'Administración',
+          headerShown: false,
         }}
       />
-      <Tabs.Screen
+      <Stack.Screen
         name="users"
         options={{
-          title: 'Usuarios',
-          tabBarIcon: ({ color }) => <Ionicons name="people-outline" size={24} color={color} />,
+          title: 'Gestión de Usuarios',
         }}
       />
-      <Tabs.Screen
+      <Stack.Screen
+        name="routes"
+        options={{
+          title: 'Gestión de Rutas',
+        }}
+      />
+      <Stack.Screen
         name="analytics"
         options={{
-          title: 'Analítica',
-          tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} />,
+          title: 'Análisis de Datos',
         }}
       />
-    </Tabs>
+      <Stack.Screen
+        name="settings"
+        options={{
+          title: 'Configuración',
+        }}
+      />
+      <Stack.Screen
+        name="maintenance"
+        options={{
+          title: 'Mantenimiento',
+        }}
+      />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          title: 'Notificaciones',
+        }}
+      />
+      <Stack.Screen
+        name="drivers"
+        options={{
+          title: 'Gestión de Conductores',
+        }}
+      />
+      <Stack.Screen
+        name="incidents"
+        options={{
+          title: 'Gestión de Incidencias',
+        }}
+      />
+    </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
