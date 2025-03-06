@@ -38,7 +38,7 @@ interface AuthContextType {
 // API URL
 const API_URL = Platform.OS === 'web' 
   ? window.location.origin + '/api' 
-  : 'http://localhost:3000/api'; // Usar la URL base del servidor para entornos nativos
+  : 'https://' + process.env.REPL_SLUG + '.' + process.env.REPL_OWNER + '.repl.co/api'; // URL para Replit y entornos nativos
 
 // Crear el contexto
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,6 +162,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setError(null);
     
     try {
+      console.log(`Intentando registrar usuario en: ${API_URL}/register`);
+      
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
@@ -170,7 +172,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body: JSON.stringify({ username, email, password }),
       });
       
+      console.log(`Respuesta recibida, status: ${response.status}`);
+      
       const data = await response.json();
+      console.log('Datos recibidos:', data);
       
       if (!response.ok) {
         throw new Error(data.message || 'Error de registro');
@@ -179,6 +184,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
       return true;
     } catch (err: any) {
+      console.error('Error durante el registro:', err);
       setError(err.message || 'Error durante el registro');
       setIsLoading(false);
       return false;
