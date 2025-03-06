@@ -8,7 +8,7 @@ channel = "stable-24_05"
 run = ["sh", "-c", "npx expo start"]
 
 [workflows]
-runButton = "Dev Server"
+runButton = "Run"
 
 [[workflows.workflow]]
 name = "Run"
@@ -16,7 +16,7 @@ author = 4584120
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --web"
+args = "node server.js"
 
 [[workflows.workflow]]
 name = "Dev Server"
