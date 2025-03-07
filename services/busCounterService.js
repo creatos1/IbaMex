@@ -1,7 +1,12 @@
+const { connect } = require('mqtt/dist/mqtt');
+const Bus = require('../models/busModel');
+const OccupancyLog = require('../models/occupancyLogModel');
+const Route = require('../models/routeModel');
 
-const mqtt = require('mqtt');
-const Bus = require('../models/Bus');
-const OccupancyLog = require('../models/OccupancyLog');
+// Configuración MQTT
+const MQTT_BROKER = 'mqtt://broker.hivemq.com';
+const MQTT_TOPIC_COUNT = 'ibamex/bus/passenger/count';
+const MQTT_TOPIC_STATUS = 'ibamex/bus/status';
 
 class BusCounterService {
   constructor() {
@@ -100,13 +105,13 @@ class BusCounterService {
   async processCountMessage(payload) {
     try {
       const data = JSON.parse(payload);
-      
+
       if (!data.busId || data.count === undefined) {
         console.error('Mensaje de conteo incompleto:', payload);
         return;
       }
 
-      // Registrar en log de ocupación
+      // Registrar en log de ocupación  (Needs SQL implementation)
       const log = new OccupancyLog({
         busId: data.busId,
         routeId: data.routeId || 'UNKNOWN',
@@ -115,7 +120,7 @@ class BusCounterService {
       });
       await log.save();
 
-      // Actualizar bus
+      // Actualizar bus (Needs SQL implementation)
       const bus = await Bus.findOne({ busId: data.busId });
       if (bus) {
         bus.currentOccupancy = data.count;
@@ -123,7 +128,7 @@ class BusCounterService {
         await bus.save();
         console.log(`Bus ${data.busId} actualizado: ${data.count} pasajeros`);
       } else {
-        // Crear bus si no existe
+        // Crear bus si no existe (Needs SQL implementation)
         const newBus = new Bus({
           busId: data.busId,
           routeId: data.routeId || 'UNKNOWN',
@@ -144,13 +149,13 @@ class BusCounterService {
   async processStatusMessage(payload) {
     try {
       const data = JSON.parse(payload);
-      
+
       if (!data.busId) {
         console.error('Mensaje de estado incompleto:', payload);
         return;
       }
 
-      // Actualizar estado del bus
+      // Actualizar estado del bus (Needs SQL implementation)
       const bus = await Bus.findOne({ busId: data.busId });
       if (bus) {
         if (data.status) bus.status = data.status;

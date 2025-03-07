@@ -1,38 +1,35 @@
 
-const mongoose = require('mongoose');
+const { Pool } = require('pg');
+require('dotenv').config();
 
-// Opciones de conexión
-const options = {
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  maxPoolSize: 10,
-  heartbeatFrequencyMS: 10000,
-};
+// Crear un pool de conexiones para reutilizarlas
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
 // Función de conexión con reintentos
 const connectDB = async (retryCount = 5) => {
-  // Usar la URI de Replit MongoDB si está disponible, o la variable de entorno
-  const uri = process.env.REPLIT_DB_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/ibamex';
-  
   try {
-    console.log('Conectando a MongoDB...');
-    await mongoose.connect(uri, options);
-    console.log('Conexión a MongoDB establecida');
+    console.log('Verificando conexión a SQL Server...');
     
-    // Eventos de conexión
-    mongoose.connection.on('error', err => {
-      console.error(`Error en la conexión a MongoDB: ${err.message}`);
+    // Probar la conexión
+    const client = await pool.connect();
+    console.log('Conexión a SQL Server establecida');
+    client.release();
+    
+    // Configurar eventos para manejar errores
+    pool.on('error', (err) => {
+      console.error(`Error en la conexión a SQL Server: ${err.message}`);
     });
     
-    mongoose.connection.on('disconnected', () => {
-      console.warn('MongoDB desconectado. Intentando reconectar...');
-      setTimeout(() => connectDB(1), 5000);
-    });
-    
+    // Manejar cierre de la aplicación
     process.on('SIGINT', async () => {
       try {
-        await mongoose.connection.close();
-        console.log('Conexión a MongoDB cerrada correctamente');
+        await pool.end();
+        console.log('Conexión a SQL Server cerrada correctamente');
         process.exit(0);
       } catch (err) {
         console.error(err);
@@ -40,18 +37,24 @@ const connectDB = async (retryCount = 5) => {
       }
     });
     
+    return true;
   } catch (err) {
-    console.error(`Error de conexión a MongoDB: ${err.message}`);
+    console.error(`Error de conexión a SQL Server: ${err.message}`);
     
     if (retryCount > 0) {
       console.log(`Reintentando conexión... (${retryCount} intentos restantes)`);
-      setTimeout(() => connectDB(retryCount - 1), 5000);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      return connectDB(retryCount - 1);
     } else {
-      console.error('Máximo número de reintentos alcanzado. No se pudo conectar a MongoDB.');
-      // En lugar de terminar el proceso, intentaremos continuar
+      console.error('Máximo número de reintentos alcanzado. No se pudo conectar a SQL Server.');
       console.log('Intentando continuar sin conexión a base de datos...');
+      return false;
     }
   }
 };
 
-module.exports = connectDB;
+// Exportar el pool y la función de conexión
+module.exports = {
+  connectDB,
+  pool
+};
