@@ -20,8 +20,8 @@ function getLocalIP() {
 const ip = getLocalIP();
 console.log(`Iniciando Expo en IP: ${ip}`);
 
-// Iniciamos expo con el host específico
-const expo = spawn('npx', ['expo', 'start', '--host', ip, '--clear'], {
+// Iniciamos expo con modo túnel para mejorar la conectividad
+const expo = spawn('npx', ['expo', 'start', '--tunnel', '--clear'], {
   stdio: 'inherit',
   shell: true
 });
