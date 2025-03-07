@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from "c:/Users/52449/Downloads/IbaMex (6)/IbaMex/components/ThemedText";
+import { ThemedText } from '@/components/ThemedText';
 import useAuth from '@/hooks/useAuth';
-import { Colors } from "c:/Users/52449/Downloads/IbaMex (6)/IbaMex/constants/Colors";
+import { Colors } from '@/constants/Colors';
 
 const RegisterScreen = () => {
   const router = useRouter();

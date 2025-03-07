@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { check, validationResult } = require('express-validator');
-const User = require('../models/User');
+const UserModel = require('../models/userModel');
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ibamex-secret-key';
@@ -44,9 +44,7 @@ router.post('/register', [
 
   try {
     // Verificar si el usuario ya existe
-    const userExists = await User.findOne({ 
-      $or: [{ email: email }, { username: username }] 
-    });
+    const userExists = await UserModel.findByEmail(email) || await UserModel.findByUsername(username);
 
     if (userExists) {
       return res.status(400).json({ message: 'El usuario ya existe' });
@@ -57,7 +55,7 @@ router.post('/register', [
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Crear nuevo usuario
-    const newUser = new User({
+    await UserModel.create({
       username,
       email,
       password: hashedPassword,
@@ -65,8 +63,6 @@ router.post('/register', [
       mfaEnabled: false,
       status: 'active'
     });
-
-    await newUser.save();
 
     res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {

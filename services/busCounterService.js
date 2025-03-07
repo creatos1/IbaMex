@@ -1,3 +1,4 @@
+
 const { connect } = require('mqtt/dist/mqtt');
 const Bus = require('../models/busModel');
 const OccupancyLog = require('../models/occupancyLogModel');
@@ -23,8 +24,8 @@ class BusCounterService {
   init() {
     try {
       console.log('Inicializando servicio de contador de pasajeros...');
-      const brokerUrl = process.env.MQTT_BROKER || 'mqtt://broker.hivemq.com';
-      this.client = mqtt.connect(brokerUrl, this.options);
+      const brokerUrl = process.env.MQTT_BROKER || MQTT_BROKER;
+      this.client = connect(brokerUrl, this.options);
 
       this.client.on('connect', () => {
         console.log('Conectado al broker MQTT:', brokerUrl);
@@ -67,8 +68,8 @@ class BusCounterService {
 
   subscribe() {
     try {
-      const countTopic = process.env.MQTT_TOPIC_COUNT || 'ibamex/bus/passenger/count';
-      const statusTopic = process.env.MQTT_TOPIC_STATUS || 'ibamex/bus/status';
+      const countTopic = process.env.MQTT_TOPIC_COUNT || MQTT_TOPIC_COUNT;
+      const statusTopic = process.env.MQTT_TOPIC_STATUS || MQTT_TOPIC_STATUS;
 
       this.client.subscribe([countTopic, statusTopic], { qos: 1 }, (err) => {
         if (err) {
@@ -90,11 +91,11 @@ class BusCounterService {
       console.log(`Mensaje recibido en ${topic}: ${payload}`);
 
       // Procesar tópico de conteo de pasajeros
-      if (topic === process.env.MQTT_TOPIC_COUNT) {
+      if (topic === (process.env.MQTT_TOPIC_COUNT || MQTT_TOPIC_COUNT)) {
         await this.processCountMessage(payload);
       } 
       // Procesar tópico de estado del bus
-      else if (topic === process.env.MQTT_TOPIC_STATUS) {
+      else if (topic === (process.env.MQTT_TOPIC_STATUS || MQTT_TOPIC_STATUS)) {
         await this.processStatusMessage(payload);
       }
     } catch (error) {
@@ -111,7 +112,7 @@ class BusCounterService {
         return;
       }
 
-      // Registrar en log de ocupación  (Needs SQL implementation)
+      // Registrar en log de ocupación
       const log = new OccupancyLog({
         busId: data.busId,
         routeId: data.routeId || 'UNKNOWN',
@@ -120,7 +121,7 @@ class BusCounterService {
       });
       await log.save();
 
-      // Actualizar bus (Needs SQL implementation)
+      // Actualizar bus
       const bus = await Bus.findOne({ busId: data.busId });
       if (bus) {
         bus.currentOccupancy = data.count;
@@ -128,7 +129,7 @@ class BusCounterService {
         await bus.save();
         console.log(`Bus ${data.busId} actualizado: ${data.count} pasajeros`);
       } else {
-        // Crear bus si no existe (Needs SQL implementation)
+        // Crear bus si no existe
         const newBus = new Bus({
           busId: data.busId,
           routeId: data.routeId || 'UNKNOWN',
@@ -155,7 +156,7 @@ class BusCounterService {
         return;
       }
 
-      // Actualizar estado del bus (Needs SQL implementation)
+      // Actualizar estado del bus
       const bus = await Bus.findOne({ busId: data.busId });
       if (bus) {
         if (data.status) bus.status = data.status;
