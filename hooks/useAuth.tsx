@@ -32,7 +32,7 @@ interface AuthContextType {
 const API_URL = Platform.OS === 'web' 
   ? window.location.origin + '/api' 
   : __DEV__ 
-    ? 'http://0.0.0.0:3000/api' // Para emulador Android
+    ? 'http://0.0.0.0:3000/api' // Para desarrollo local
     : 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
 
 // Crear el contexto

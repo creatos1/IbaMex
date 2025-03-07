@@ -80,7 +80,7 @@ router.post('/login', async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = await User.findOne({ email });
+    const user = await UserModel.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Credenciales inválidas' });
     }
@@ -150,7 +150,7 @@ router.post('/verify-mfa', async (req, res) => {
     const decoded = jwt.verify(tempToken, JWT_SECRET);
 
     // Buscar el usuario
-    const user = await User.findById(decoded.userId); // Corrected to use User model
+    const user = await UserModel.findById(decoded.userId);
     if (!user) {
       return res.status(400).json({ message: 'Usuario no encontrado' });
     }
@@ -205,7 +205,7 @@ router.put('/user/change-password', authenticateToken, async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = await User.findById(userId);
+    const user = await UserModel.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
@@ -249,7 +249,7 @@ router.put('/user/profile', authenticateToken, async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = await User.findById(userId);
+    const user = await UserModel.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
@@ -285,7 +285,7 @@ router.put('/user/toggle-mfa', authenticateToken, async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = await User.findById(userId);
+    const user = await UserModel.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
@@ -310,7 +310,7 @@ router.put('/user/toggle-mfa', authenticateToken, async (req, res) => {
 // Obtener usuarios (solo para admin)
 router.get('/users', authenticateToken, isAdmin, async (req, res) => {
   try {
-    const users = await User.find({}, {password: 0}); //Exclude password field
+    const users = await UserModel.find({}, {password: 0}); //Exclude password field
     res.json(users);
   } catch (err) {
     console.error(err);
@@ -329,7 +329,7 @@ router.put('/users/:id/role', authenticateToken, isAdmin, async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = await User.findById(id);
+    const user = await UserModel.findById(id);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
@@ -363,7 +363,7 @@ router.put('/users/:id/status', authenticateToken, isAdmin, async (req, res) => 
 
   try {
     // Buscar usuario
-    const user = await User.findById(id);
+    const user = await UserModel.findById(id);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }

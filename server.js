@@ -69,8 +69,9 @@ const startServer = async () => {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
-    // Configurar rutas (ajustar si es necesario)
-    //app.use('/api', authRoutes);
+    // Configurar rutas
+    const authRoutes = require('./api/auth');
+    app.use('/api', authRoutes);
     //app.use('/api/buses', busRoutes);
     //app.use('/api/routes', routeRoutes);
 
