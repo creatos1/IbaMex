@@ -5,56 +5,39 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
-const sql = require('mssql'); // Importar el paquete mssql para conectar a SQL Server
+
+// Importar módulo de conexión centralizado
+const connectDB = require('./config/db');
 
 // Cargar variables de entorno
 dotenv.config();
 
-// Función para conectar a SQL Server
-const connectDB = async () => {
-  try {
-    const pool = await sql.connect({
-      user: 'sa',
-      password: 'creatos1',
-      server: 'DESKTOP-G2I28UV',
-      database: 'utasoft',
-      options: {
-        encrypt: true,
-        trustServerCertificate: true,
-      },
-      authentication: {
-        type: 'default'  // Cambiar esto para usar autenticación de Windows si es necesario
-      }
-    });
-
-    console.log('Conexión a SQL Server exitosa');
-    return pool;
-  } catch (error) {
-    console.error('Error al conectar a SQL Server:', error.message);
-    throw new Error('No se pudo conectar a la base de datos SQL Server');
-  }
-};
-
 // Función para iniciar el servidor
 const startServer = async () => {
   try {
-    // Conectar a SQL Server
-    await connectDB();
-    
+    // Conectar a SQL Server usando el módulo centralizado
+    const sql = await connectDB();
+
     const app = express();
     const PORT = process.env.PORT || 3000;
 
     // Middleware de seguridad y rendimiento
     app.use(helmet());
     app.use(compression());
-    
+
     // Configuración CORS ampliada para desarrollo
     app.use(cors({
-      origin: ['http://localhost:3000', 'http://localhost:19006', 'exp://localhost:19000', 'http://10.0.2.2:3000', 'http://10.0.2.2:19000', 'http://10.0.2.2:19006', '*'],
+      origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.2.3.157:3000', 'http://localhost:19006', 'exp://localhost:19000', 'exp://127.0.0.1:19000', 'exp://10.2.3.157:19000', 'http://10.0.2.2:3000', 'http://10.0.2.2:19000', 'http://10.0.2.2:19006', '*'],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true
     }));
+
+    // Log para todas las solicitudes (ayuda en depuración)
+    app.use((req, res, next) => {
+      console.log(`${new Date().toISOString()} | ${req.method} ${req.url}`);
+      next();
+    });
 
     // Configurar rate limiting
     const limiter = rateLimit({
@@ -68,6 +51,9 @@ const startServer = async () => {
     // Middleware para parsear JSON
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
+
+    // Hacer accesible la conexión SQL para los modelos
+    app.locals.sql = sql;
 
     // Configurar rutas
     const authRoutes = require('./api/auth');
@@ -107,5 +93,24 @@ const startServer = async () => {
   }
 };
 
+// Agregar más logs para depuración
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
 // Iniciar el servidor
+console.log('Iniciando servidor...');
+console.log('Variables de entorno cargadas:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: process.env.PORT,
+  DB_USER: process.env.DB_USER,
+  DB_SERVER: process.env.DB_SERVER,
+  DB_NAME: process.env.DB_NAME
+});
+console.log('Intentando conectar a SQL Server en:', process.env.DB_SERVER || 'DESKTOP-G2I28UV');
+
 startServer();

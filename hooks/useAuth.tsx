@@ -32,8 +32,25 @@ interface AuthContextType {
 const API_URL = Platform.OS === 'web' 
   ? window.location.origin + '/api' 
   : __DEV__ 
-    ? 'http://0.0.0.0:3000/api' // Para desarrollo local
+    ? 'http://10.2.3.157:3000/api' // Usando la IP local actual
     : 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
+
+// Fallback URL si no funciona la anterior
+const getApiUrl = () => {
+  try {
+    if (Platform.OS === 'web') {
+      return window.location.origin + '/api';
+    } else if (__DEV__) {
+      // Usar la IP actual de tu PC local
+      return 'http://10.2.3.157:3000/api';
+    } else {
+      return 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
+    }
+  } catch (e) {
+    console.log('Error obteniendo API URL:', e);
+    return 'http://10.2.3.157:3000/api'; // Fallback
+  }
+};
 
 // Crear el contexto
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,9 +117,28 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      console.log(`Intentando registrar usuario en: ${API_URL}/register`);
+      const apiUrl = getApiUrl();
+      console.log(`Intentando registrar usuario en: ${apiUrl}/register`);
 
-      const response = await fetch(`${API_URL}/register`, {
+      // Usar un timeout para evitar que la petición se quede colgada
+      const fetchWithTimeout = async (url: string, options: any, timeout = 10000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+          });
+          clearTimeout(id);
+          return response;
+        } catch (err) {
+          clearTimeout(id);
+          throw err;
+        }
+      };
+
+      const response = await fetchWithTimeout(`${apiUrl}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -126,7 +162,14 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       return true;
     } catch (err: any) {
       console.error('Error durante el registro:', err);
-      setError(err.message || 'Error durante el registro');
+      // Mensaje más detallado para debug
+      if (err.name === 'AbortError') {
+        setError('La solicitud de registro ha excedido el tiempo de espera. Verifica tu conexión a internet y vuelve a intentar.');
+      } else if (err.message.includes('Network request failed')) {
+        setError('Error de conexión: Asegúrate de que el servidor esté ejecutándose y accesible. Direcciones probables: 10.0.2.2:3000 o 192.168.1.X:3000');
+      } else {
+        setError(err.message || 'Error durante el registro');
+      }
       setIsLoading(false);
       return false;
     }

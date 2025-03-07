@@ -97,6 +97,10 @@ const RegisterScreen = () => {
     
     try {
       console.log('Intentando registrar usuario...');
+      
+      // Mostrar mensaje de conexión en proceso
+      setError('Conectando al servidor...');
+      
       const success = await signUp(username, email, password);
       
       if (success) {
@@ -104,11 +108,22 @@ const RegisterScreen = () => {
         // Redirigir a la pantalla de login
         router.push('/login');
       } else {
+        // Error ya configurado por useAuth
         setError(authError || 'Error durante el registro');
       }
     } catch (err) {
       console.error('Error en handleRegister:', err);
-      setError('Ha ocurrido un error inesperado');
+      
+      // Intentar dar más detalles sobre el error
+      if (err instanceof Error) {
+        if (err.message.includes('Network request failed')) {
+          setError('Error de conexión al servidor. Verifica que el servidor esté ejecutándose correctamente.');
+        } else {
+          setError('Error inesperado: ' + err.message);
+        }
+      } else {
+        setError('Ha ocurrido un error inesperado');
+      }
     }
   };
   

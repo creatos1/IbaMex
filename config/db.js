@@ -7,8 +7,8 @@ dotenv.config();
 // Parsear la cadena de conexión de DATABASE_URL o usar valores por defecto
 const parseConnectionString = (connectionString) => {
   try {
-    // Si es una cadena de conexión completa
-    if (connectionString.startsWith('mssql://')) {
+    // Si es una cadena de conexión completa y está definida
+    if (connectionString && connectionString.startsWith('mssql://')) {
       return connectionString;
     }
     
@@ -16,11 +16,12 @@ const parseConnectionString = (connectionString) => {
     return {
       user: process.env.DB_USER || 'sa',
       password: process.env.DB_PASSWORD || 'creatos1',
-      server: process.env.DB_SERVER || 'localhost',
+      server: process.env.DB_SERVER || 'DESKTOP-G2I28UV',
       database: process.env.DB_NAME || 'utasoft',
       options: {
         encrypt: process.env.NODE_ENV === 'production', // Usar encriptación en producción
-        trustServerCertificate: process.env.NODE_ENV !== 'production'
+        trustServerCertificate: true, // Confiar en certificado para desarrollo local
+        connectTimeout: 30000 // Aumentar el tiempo de espera a 30 segundos
       }
     };
   } catch (error) {
@@ -38,7 +39,8 @@ const parseConnectionString = (connectionString) => {
   }
 };
 
-const config = parseConnectionString(process.env.DATABASE_URL);
+// Usa process.env.DATABASE_URL si existe, si no, pasa null
+const config = parseConnectionString(process.env.DATABASE_URL || null);
 
 const connectDB = async () => {
   try {

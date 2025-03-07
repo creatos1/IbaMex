@@ -35,8 +35,14 @@ router.post('/register', [
   check('email', 'Proporcione un email válido').isEmail(),
   check('password', 'La contraseña debe tener al menos 6 caracteres').isLength({ min: 6 })
 ], async (req, res) => {
+  console.log('Intento de registro recibido:', JSON.stringify({
+    body: req.body,
+    headers: req.headers
+  }, null, 2));
+  
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('Errores de validación:', errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
 
