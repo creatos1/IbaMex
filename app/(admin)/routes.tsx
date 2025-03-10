@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapRoute from './MapRoute';
+import { MapRoute } from './MapRoute';  // Para exportación nombrada
+
 import { useAuth } from '@/hooks/useAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedText } from '@/components/ThemedText';

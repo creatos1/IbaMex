@@ -1,13 +1,14 @@
 {
   "expo": {
     "name": "BACK",
+    "platforms": ["ios", "android"],
     "slug": "BACK",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "extra": {
       "eas": {
         "projectId": "expo-app"
