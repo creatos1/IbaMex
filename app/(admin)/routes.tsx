@@ -1,277 +1,806 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Text, View, TextInput, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import MapRoute from './MapRoute';
-import '../../assets/styles/RouteManager.css';
+import { useAuth } from '@/hooks/useAuth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
+
+// Definición de tipos
+interface Location {
+  lat: number;
+  lng: number;
+}
+
+interface Stop {
+  name: string;
+  location: Location;
+}
 
 interface Route {
-  id: string;
+  id?: number;
+  routeId: string;
   name: string;
   description: string;
-  stops: string[];
+  stops: Stop[];
   waypoints: [number, number][];
+  active: boolean;
 }
 
-interface RouteManagerProps {
-  token: string;
-}
-
-export default function RouteManager({ token }: RouteManagerProps) {
+// Componente principal
+export default function RoutesScreen() {
+  const { token, signOut } = useAuth(); // Assuming useAuth now provides signOut
+  const router = useRouter();
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [newRoute, setNewRoute] = useState({
+  const [loading, setLoading] = useState(true);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showRouteDetails, setShowRouteDetails] = useState(false);
+  const [newRoute, setNewRoute] = useState<Route>({
+    routeId: '',
     name: '',
     description: '',
-    waypoints: [] as [number, number][] //Added waypoints to newRoute state
+    stops: [],
+    waypoints: [],
+    active: true
   });
-  const [stops, setStops] = useState<string[]>(['']);
-  const [waypoints, setWaypoints] = useState<[number, number][]>([]);
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
 
-  // Función para cargar las rutas existentes (simulada)
-  const fetchRoutes = async () => {
-    setIsLoading(true);
+  // Colores del tema
+  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
+  const textColor = useThemeColor({ light: '#000', dark: '#fff' }, 'text');
+  const cardColor = useThemeColor({ light: '#f5f5f5', dark: '#1e1e1e' }, 'card');
+  const accentColor = useThemeColor({ light: '#0a7ea4', dark: '#64d2ff' }, 'tint');
+
+  // Función para cargar rutas desde el servidor o almacenamiento local
+  const fetchRoutes = useCallback(async () => {
+    setLoading(true);
     try {
-      // Simulación de API - en producción esto sería una llamada real
-      setTimeout(() => {
-        const dummyRoutes: Route[] = [
-          { 
-            id: '1', 
-            name: 'Ruta Centro - Norte', 
-            description: 'Recorrido desde el centro hacia la zona norte', 
-            stops: ['Terminal Central', 'Plaza Principal', 'Hospital General', 'Centro Comercial Norte'],
-            waypoints: [
-              [19.435, -99.130],
-              [19.440, -99.135],
-              [19.445, -99.140],
-              [19.450, -99.145]
-            ]
-          },
-          { 
-            id: '2', 
-            name: 'Ruta Sur - Universidad', 
-            description: 'Ruta hacia el campus universitario', 
-            stops: ['Terminal Sur', 'Mercado Municipal', 'Parque Industrial', 'Campus Universitario'],
-            waypoints: [
-              [19.425, -99.140],
-              [19.420, -99.145],
-              [19.415, -99.150],
-              [19.410, -99.155]
-            ]
-          },
-        ];
-        setRoutes(dummyRoutes);
-        setIsLoading(false);
-      }, 1000);
+      // Intentar obtener del almacenamiento local primero
+      const storedRoutes = await AsyncStorage.getItem('routes');
+      if (storedRoutes) {
+        setRoutes(JSON.parse(storedRoutes));
+      }
+
+      // Si hay un token, intentar obtener del servidor
+      if (token) {
+        const API_URL = Platform.OS === 'web'
+          ? window.location.origin + '/api'
+          : 'http://192.168.100.13:3000/api';
+
+        const response = await fetch(`${API_URL}/routes`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRoutes(data);
+          // Guardar en almacenamiento local
+          await AsyncStorage.setItem('routes', JSON.stringify(data));
+        }
+      }
     } catch (err) {
-      setError('Error al cargar las rutas');
-      setIsLoading(false);
+      console.error('Error fetching routes:', err);
+      Alert.alert('Error', 'No se pudieron cargar las rutas');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [token]);
 
   // Cargar rutas al montar el componente
   useEffect(() => {
     fetchRoutes();
-  }, []);
+  }, [fetchRoutes]);
 
-  // Manejar cambios en el formulario
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewRoute((prev) => ({ ...prev, [name]: value }));
+  // Función para guardar una ruta (nueva o editada)
+  const saveRoute = async (route: Route, isNewRoute = false) => {
+    try {
+      // Guardar localmente
+      let updatedRoutes;
+      if (isNewRoute) {
+        // Asignar un ID temporal para nuevas rutas
+        const tempId = Date.now();
+        const newRouteWithId = { ...route, id: tempId };
+        updatedRoutes = [...routes, newRouteWithId];
+      } else {
+        // Actualizar ruta existente
+        updatedRoutes = routes.map(r => (r.routeId === route.routeId ? route : r));
+      }
+
+      setRoutes(updatedRoutes);
+      await AsyncStorage.setItem('routes', JSON.stringify(updatedRoutes));
+
+      // Si hay token, intentar guardar en el servidor
+      if (token) {
+        const API_URL = Platform.OS === 'web'
+          ? window.location.origin + '/api'
+          : 'http://192.168.100.13:3000/api';
+
+        const url = isNewRoute
+          ? `${API_URL}/routes`
+          : `${API_URL}/routes/${route.routeId}`;
+
+        const method = isNewRoute ? 'POST' : 'PUT';
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(route)
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al guardar la ruta en el servidor');
+        }
+      }
+
+      Alert.alert('Éxito', isNewRoute ? 'Ruta creada correctamente' : 'Ruta actualizada correctamente');
+
+      return true;
+    } catch (error) {
+      console.error('Error saving route:', error);
+      Alert.alert('Error', 'No se pudo guardar la ruta');
+      return false;
+    }
   };
 
-  // Añadir nueva parada
-  const addStop = () => {
-    setStops([...stops, '']);
+  // Función para eliminar una ruta
+  const deleteRoute = async (routeId: string) => {
+    try {
+      // Eliminar localmente
+      const updatedRoutes = routes.filter(r => r.routeId !== routeId);
+      setRoutes(updatedRoutes);
+      await AsyncStorage.setItem('routes', JSON.stringify(updatedRoutes));
+
+      // Si hay token, intentar eliminar en el servidor
+      if (token) {
+        const API_URL = Platform.OS === 'web'
+          ? window.location.origin + '/api'
+          : 'http://192.168.100.13:3000/api';
+
+        await fetch(`${API_URL}/routes/${routeId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+
+      Alert.alert('Éxito', 'Ruta eliminada correctamente');
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting route:', error);
+      Alert.alert('Error', 'No se pudo eliminar la ruta');
+      return false;
+    }
   };
 
-  // Actualizar parada
-  const updateStop = (index: number, value: string) => {
-    const updatedStops = [...stops];
-    updatedStops[index] = value;
-    setStops(updatedStops);
+  // Manejadores para el formulario de nueva ruta
+  const handleAddRoute = () => {
+    setNewRoute({
+      routeId: '',
+      name: '',
+      description: '',
+      stops: [],
+      waypoints: [],
+      active: true
+    });
+    setShowAddForm(true);
+    setShowEditForm(false);
+    setShowRouteDetails(false);
   };
 
-  // Eliminar parada
-  const removeStop = (index: number) => {
-    const updatedStops = [...stops];
-    updatedStops.splice(index, 1);
-    setStops(updatedStops);
-  };
-
-  // Manejar ruta creada desde el mapa
-  const handleRouteCreated = (newWaypoints: [number, number][]) => {
-    setNewRoute(prev => ({...prev, waypoints: newWaypoints})); //Update waypoints in newRoute state
-    console.log("Route waypoints updated:", newWaypoints);
-  };
-
-  // Enviar el formulario para crear una nueva ruta
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    // Validar que haya al menos 2 waypoints
-    if (newRoute.waypoints.length < 2) { // Use newRoute.waypoints for validation
-      setError('La ruta debe tener al menos 2 puntos en el mapa');
-      setIsLoading(false);
+  const handleSaveNewRoute = async () => {
+    if (!newRoute.routeId || !newRoute.name) {
+      Alert.alert('Error', 'ID de ruta y nombre son obligatorios');
       return;
     }
 
-    // Simulación de API - en producción esto sería una llamada real
-    setTimeout(() => {
-      const newRouteData: Route = {
-        id: Date.now().toString(), // Generar un ID único (en producción sería asignado por el backend)
-        name: newRoute.name,
-        description: newRoute.description,
-        stops: stops.filter(stop => stop.trim() !== ''),
-        waypoints: newRoute.waypoints // Use waypoints from newRoute state
-      };
+    // Verificar si ya existe una ruta con ese ID
+    const exists = routes.some(r => r.routeId === newRoute.routeId);
+    if (exists) {
+      Alert.alert('Error', 'Ya existe una ruta con ese ID');
+      return;
+    }
 
-      setRoutes([...routes, newRouteData]);
-
-      // Resetear el formulario
-      setNewRoute({ name: '', description: '', waypoints: []}); //Reset waypoints
-      setStops(['']);
-      setWaypoints([]);
-
-      setIsLoading(false);
-    }, 1000);
+    const success = await saveRoute(newRoute, true);
+    if (success) {
+      setShowAddForm(false);
+    }
   };
 
-  // Mostrar detalles de una ruta seleccionada
-  const handleViewRoute = (routeId: string) => {
-    setSelectedRouteId(selectedRouteId === routeId ? null : routeId);
+  // Manejador para editar ruta
+  const handleEditRoute = (route: Route) => {
+    setSelectedRoute(route);
+    setNewRoute({ ...route });
+    setShowEditForm(true);
+    setShowAddForm(false);
+    setShowRouteDetails(false);
   };
 
-  const selectedRoute = routes.find(r => r.id === selectedRouteId);
+  const handleSaveEditedRoute = async () => {
+    if (!newRoute.name) {
+      Alert.alert('Error', 'El nombre es obligatorio');
+      return;
+    }
 
-  return (
-    <div className="route-manager">
-      <h2>Gestión de Rutas</h2>
+    const success = await saveRoute(newRoute, false);
+    if (success) {
+      setShowEditForm(false);
+    }
+  };
 
-      <div className="route-form-container">
-        <h3>Crear Nueva Ruta</h3>
+  // Manejador para ver detalles de ruta
+  const handleViewRouteDetails = (route: Route) => {
+    setSelectedRoute(route);
+    setShowRouteDetails(true);
+    setShowAddForm(false);
+    setShowEditForm(false);
+  };
 
-        {error && <div className="error-message">{error}</div>}
+  // Manejador para eliminar ruta
+  const handleDeleteRoute = (routeId: string) => {
+    Alert.alert(
+      'Confirmar eliminación',
+      '¿Estás seguro de que deseas eliminar esta ruta?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteRoute(routeId);
+            if (success && showRouteDetails) {
+              setShowRouteDetails(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
-        <form onSubmit={handleSubmit} className="route-form">
-          <div className="form-group">
-            <label>Nombre de la Ruta:</label>
-            <input 
-              type="text" 
-              name="name" 
-              value={newRoute.name} 
-              onChange={handleInputChange}
-              required
-            />
-          </div>
+  // Manejador para actualizar waypoints
+  const handleRouteCreated = (waypoints: [number, number][]) => {
+    setNewRoute(prev => ({ ...prev, waypoints }));
+  };
 
-          <div className="form-group">
-            <label>Descripción:</label>
-            <textarea 
-              name="description" 
-              value={newRoute.description} 
-              onChange={handleInputChange}
-              rows={3}
-              required
-            />
-          </div>
+  // Logout function (incorporating the provided change)
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace('/login');
+    } catch (err) {
+      console.error('Error al cerrar sesión:', err);
+    }
+  };
 
-          <div className="form-group map-creator">
-            <label>Trazar Ruta en el Mapa:</label>
-            <MapRoute 
-              editable={true} 
+
+  // Renderizar lista de rutas
+  const renderRouteList = () => {
+    if (loading) {
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={accentColor} />
+          <ThemedText style={styles.loadingText}>Cargando rutas...</ThemedText>
+        </View>
+      );
+    }
+
+    if (routes.length === 0) {
+      return (
+        <View style={styles.centered}>
+          <ThemedText style={styles.emptyText}>No hay rutas disponibles</ThemedText>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: accentColor }]}
+            onPress={handleAddRoute}
+          >
+            <ThemedText style={styles.buttonText}>Agregar Ruta</ThemedText>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Gestión de Rutas</ThemedText>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: accentColor }]}
+            onPress={handleAddRoute}
+          >
+            <Ionicons name="add" size={24} color="white" />
+            <Text style={styles.buttonText}>Nueva Ruta</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.routeList}>
+          {routes.map((route, idx) => (
+            <TouchableOpacity
+              key={`route-${route.routeId}`}
+              style={[styles.routeCard, { backgroundColor: cardColor }]}
+              onPress={() => handleViewRouteDetails(route)}
+            >
+              <View style={styles.routeHeader}>
+                <ThemedText style={styles.routeName}>{route.name}</ThemedText>
+                <ThemedText style={styles.routeId}>ID: {route.routeId}</ThemedText>
+              </View>
+              <ThemedText style={styles.routeDescription} numberOfLines={2}>
+                {route.description || 'Sin descripción'}
+              </ThemedText>
+              <View style={styles.routeFooter}>
+                <ThemedText style={styles.stopsCount}>
+                  {route.stops.length} {route.stops.length === 1 ? 'parada' : 'paradas'}
+                </ThemedText>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: accentColor }]}
+                    onPress={() => handleEditRoute(route)}
+                  >
+                    <Ionicons name="create-outline" size={18} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#e74c3c' }]}
+                    onPress={() => handleDeleteRoute(route.routeId)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </ThemedView>
+    );
+  };
+
+  // Renderizar formulario para agregar ruta
+  const renderAddForm = () => {
+    return (
+      <ThemedView style={styles.formContainer}>
+        <View style={styles.formHeader}>
+          <ThemedText style={styles.formTitle}>Nueva Ruta</ThemedText>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowAddForm(false)}
+          >
+            <Ionicons name="close" size={24} color={textColor} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.form}>
+          <ThemedText style={styles.label}>ID de Ruta</ThemedText>
+          <TextInput
+            style={[styles.input, { color: textColor, borderColor: textColor }]}
+            value={newRoute.routeId}
+            onChangeText={text => setNewRoute(prev => ({ ...prev, routeId: text }))}
+            placeholder="Ej. R001"
+            placeholderTextColor="#999"
+          />
+
+          <ThemedText style={styles.label}>Nombre</ThemedText>
+          <TextInput
+            style={[styles.input, { color: textColor, borderColor: textColor }]}
+            value={newRoute.name}
+            onChangeText={text => setNewRoute(prev => ({ ...prev, name: text }))}
+            placeholder="Ej. Ruta Centro"
+            placeholderTextColor="#999"
+          />
+
+          <ThemedText style={styles.label}>Descripción</ThemedText>
+          <TextInput
+            style={[styles.textarea, { color: textColor, borderColor: textColor }]}
+            value={newRoute.description}
+            onChangeText={text => setNewRoute(prev => ({ ...prev, description: text }))}
+            placeholder="Descripción de la ruta..."
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={4}
+          />
+
+          <ThemedText style={styles.label}>Trazar Ruta</ThemedText>
+          <View style={styles.mapContainer}>
+            <MapRoute
+              editable={true}
               onRouteCreated={handleRouteCreated}
             />
-          </div>
+          </View>
 
-          <div className="form-group">
-            <label>Paradas:</label>
-            {stops.map((stop, index) => (
-              <div key={index} className="stop-input">
-                <input 
-                  type="text"
-                  value={stop}
-                  onChange={(e) => updateStop(index, e.target.value)}
-                  placeholder={`Parada ${index + 1}`}
-                  required
-                />
-                {stops.length > 1 && (
-                  <button 
-                    type="button" 
-                    className="remove-btn" 
-                    onClick={() => removeStop(index)}
-                  >
-                    Eliminar
-                  </button>
-                )}
-              </div>
-            ))}
-            <button 
-              type="button" 
-              className="add-btn" 
-              onClick={addStop}
-            >
-              Añadir Parada
-            </button>
-          </div>
+          <View style={styles.waypointsInfo}>
+            <ThemedText style={styles.waypointsCount}>
+              {newRoute.waypoints.length} puntos de ruta definidos
+            </ThemedText>
+          </View>
 
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="submit-btn"
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: accentColor }]}
+            onPress={handleSaveNewRoute}
           >
-            {isLoading ? 'Creando...' : 'Crear Ruta'}
-          </button>
-        </form>
-      </div>
+            <ThemedText style={styles.buttonText}>Guardar Ruta</ThemedText>
+          </TouchableOpacity>
+        </ScrollView>
+      </ThemedView>
+    );
+  };
 
-      <div className="routes-list">
-        <h3>Rutas Existentes</h3>
-        {isLoading && !routes.length ? (
-          <p>Cargando rutas...</p>
-        ) : routes.length === 0 ? (
-          <p>No hay rutas registradas</p>
-        ) : (
-          <div className="routes-grid">
-            {routes.map(route => (
-              <div key={route.id} className="route-card">
-                <h4>{route.name}</h4>
-                <p>{route.description}</p>
-                <div className="card-actions">
-                  <button 
-                    className="view-route-btn" 
-                    onClick={() => handleViewRoute(route.id)}
-                  >
-                    {selectedRouteId === route.id ? 'Ocultar Mapa' : 'Ver en Mapa'}
-                  </button>
-                </div>
+  // Renderizar formulario para editar ruta
+  const renderEditForm = () => {
+    if (!selectedRoute) return null;
 
-                {selectedRouteId === route.id && (
-                  <div className="route-map">
-                    <MapRoute 
-                      editable={false}
-                      existingRoute={{
-                        id: route.id,
-                        name: route.name,
-                        waypoints: route.waypoints
-                      }}
-                    />
-                  </div>
-                )}
+    return (
+      <ThemedView style={styles.formContainer}>
+        <View style={styles.formHeader}>
+          <ThemedText style={styles.formTitle}>Editar Ruta</ThemedText>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowEditForm(false)}
+          >
+            <Ionicons name="close" size={24} color={textColor} />
+          </TouchableOpacity>
+        </View>
 
-                <div className="stops-list">
-                  <strong>Paradas:</strong>
-                  <ol>
-                    {route.stops.map((stop, index) => (
-                      <li key={index}>{stop}</li>
-                    ))}
-                  </ol>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+        <ScrollView style={styles.form}>
+          <ThemedText style={styles.label}>ID de Ruta</ThemedText>
+          <TextInput
+            style={[styles.input, { color: textColor, borderColor: textColor, backgroundColor: '#e0e0e0' }]}
+            value={newRoute.routeId}
+            editable={false}
+          />
+
+          <ThemedText style={styles.label}>Nombre</ThemedText>
+          <TextInput
+            style={[styles.input, { color: textColor, borderColor: textColor }]}
+            value={newRoute.name}
+            onChangeText={text => setNewRoute(prev => ({ ...prev, name: text }))}
+          />
+
+          <ThemedText style={styles.label}>Descripción</ThemedText>
+          <TextInput
+            style={[styles.textarea, { color: textColor, borderColor: textColor }]}
+            value={newRoute.description}
+            onChangeText={text => setNewRoute(prev => ({ ...prev, description: text }))}
+            multiline
+            numberOfLines={4}
+          />
+
+          <ThemedText style={styles.label}>Trazar Ruta</ThemedText>
+          <View style={styles.mapContainer}>
+            <MapRoute
+              editable={true}
+              waypoints={newRoute.waypoints}
+              onRouteCreated={handleRouteCreated}
+            />
+          </View>
+
+          <View style={styles.waypointsInfo}>
+            <ThemedText style={styles.waypointsCount}>
+              {newRoute.waypoints.length} puntos de ruta definidos
+            </ThemedText>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: accentColor }]}
+            onPress={handleSaveEditedRoute}
+          >
+            <ThemedText style={styles.buttonText}>Guardar Cambios</ThemedText>
+          </TouchableOpacity>
+        </ScrollView>
+      </ThemedView>
+    );
+  };
+
+  // Renderizar detalles de ruta
+  const renderRouteDetails = () => {
+    if (!selectedRoute) return null;
+
+    return (
+      <ThemedView style={styles.formContainer}>
+        <View style={styles.formHeader}>
+          <ThemedText style={styles.formTitle}>Detalles de Ruta</ThemedText>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowRouteDetails(false)}
+          >
+            <Ionicons name="close" size={24} color={textColor} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.form}>
+          <View style={styles.detailRow}>
+            <ThemedText style={styles.detailLabel}>ID de Ruta:</ThemedText>
+            <ThemedText style={styles.detailValue}>{selectedRoute.routeId}</ThemedText>
+          </View>
+
+          <View style={styles.detailRow}>
+            <ThemedText style={styles.detailLabel}>Nombre:</ThemedText>
+            <ThemedText style={styles.detailValue}>{selectedRoute.name}</ThemedText>
+          </View>
+
+          <View style={styles.detailRow}>
+            <ThemedText style={styles.detailLabel}>Descripción:</ThemedText>
+            <ThemedText style={styles.detailValue}>
+              {selectedRoute.description || 'Sin descripción'}
+            </ThemedText>
+          </View>
+
+          <View style={styles.detailSection}>
+            <ThemedText style={styles.sectionTitle}>Mapa de Ruta</ThemedText>
+            <View style={styles.mapContainer}>
+              <MapRoute
+                editable={false}
+                waypoints={selectedRoute.waypoints}
+              />
+            </View>
+          </View>
+
+          <View style={styles.detailSection}>
+            <ThemedText style={styles.sectionTitle}>Paradas ({selectedRoute.stops.length})</ThemedText>
+            {selectedRoute.stops.length > 0 ? (
+              selectedRoute.stops.map((stop, index) => (
+                <View
+                  key={`stop-${stop.name}-${index}`}
+                  style={[styles.stopItem, { backgroundColor: cardColor }]}
+                >
+                  <ThemedText style={styles.stopName}>{stop.name}</ThemedText>
+                  <ThemedText style={styles.stopCoords}>
+                    {stop.location.lat.toFixed(6)}, {stop.location.lng.toFixed(6)}
+                  </ThemedText>
+                </View>
+              ))
+            ) : (
+              <ThemedText style={styles.emptyText}>No hay paradas definidas</ThemedText>
+            )}
+          </View>
+
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              style={[styles.actionButtonLarge, { backgroundColor: accentColor }]}
+              onPress={() => handleEditRoute(selectedRoute)}
+            >
+              <Ionicons name="create-outline" size={20} color="white" />
+              <Text style={styles.buttonText}>Editar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButtonLarge, { backgroundColor: '#e74c3c' }]}
+              onPress={() => handleDeleteRoute(selectedRoute.routeId)}
+            >
+              <Ionicons name="trash-outline" size={20} color="white" />
+              <Text style={styles.buttonText}>Eliminar</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </ThemedView>
+    );
+  };
+
+  // Renderizar contenido principal
+  if (showAddForm) {
+    return renderAddForm();
+  }
+
+  if (showEditForm) {
+    return renderEditForm();
+  }
+
+  if (showRouteDetails) {
+    return renderRouteDetails();
+  }
+
+  return renderRouteList();
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  button: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  routeList: {
+    flex: 1,
+  },
+  routeCard: {
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  routeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  routeName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  routeId: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
+  routeDescription: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  routeFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  stopsCount: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  actions: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  actionButtonLarge: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  formContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  form: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 6,
+    fontWeight: 'bold',
+  },
+  input: {
+    height: 45,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  textarea: {
+    height: 100,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    marginBottom: 16,
+    textAlignVertical: 'top',
+  },
+  mapContainer: {
+    height: 300,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  waypointsInfo: {
+    marginBottom: 16,
+  },
+  waypointsCount: {
+    fontStyle: 'italic',
+  },
+  saveButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  detailRow: {
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  detailSection: {
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  stopItem: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  stopName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  stopCoords: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    marginBottom: 30,
+  },
+});

@@ -23,6 +23,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<boolean>;
   verifyMfa: (code: string) => Promise<boolean>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>; // Añadir función de logout como alias de signOut
   updateProfile: (userData: Partial<User>) => Promise<boolean>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   toggleMfa: (enable: boolean) => Promise<boolean>;
@@ -124,7 +125,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       const fetchWithTimeout = async (url: string, options: any, timeout = 10000) => {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
-        
+
         try {
           const response = await fetch(url, {
             ...options,
@@ -263,15 +264,17 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const signOut = async (): Promise<void> => {
     try {
       await AsyncStorage.removeItem('auth_token');
-    } catch (err) {
-      console.error('Error al eliminar token:', err);
-    } finally {
       setToken(null);
       setUser(null);
       setRequireMfa(false);
       setTempToken(null);
+    } catch (err) {
+      console.error('Error al eliminar token:', err);
     }
   };
+
+  // Alias para mantener compatibilidad con ambos nombres de función
+  const logout = signOut;
 
   // Actualizar perfil
   const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
@@ -393,6 +396,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     signIn,
     verifyMfa,
     signOut,
+    logout: signOut, // Añadir alias para logout
     updateProfile,
     changePassword,
     toggleMfa

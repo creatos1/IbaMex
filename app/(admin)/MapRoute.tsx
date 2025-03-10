@@ -1,251 +1,208 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import ThemedView from '../../components/ThemedView';
+import ThemedText from '../../components/ThemedText';
+import { useThemeColor } from '../../hooks/useThemeColor';
+import { useRouter, useNavigation } from 'expo-router';
+import { useAuth } from '../../hooks/useAuth';
 
-import { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-routing-machine';
-import '../../assets/styles/MapRoute.css';
+// Componente específico para web
+const MapView = Platform.select({
+  web: () => require('../../components/MapViewWeb').default,
+  default: () => require('../../components/MapView').default,
+})();
 
-// Necesario para que los íconos de Leaflet funcionen correctamente
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+const MapRoute = ({ route, onSaveWaypoints, isEditing = false, initialMarkers = [] }) => {
+  const [markers, setMarkers] = useState(initialMarkers || []);
+  const [loading, setLoading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+  const primaryColor = useThemeColor({ light: '#007BFF', dark: '#0A84FF' }, 'tint');
+  const secondaryColor = useThemeColor({ light: '#FF3B30', dark: '#FF453A' }, 'text');
+  const backgroundColor = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
+  const borderColor = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'border');
+  const textColor = useThemeColor({ light: '#000000', dark: '#FFFFFF' }, 'text');
 
-let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41]
-});
+  // Referencia para evitar múltiples actualizaciones
+  const markersRef = useRef(markers);
 
-L.Marker.prototype.options.icon = DefaultIcon;
+  // Actualizar la referencia cuando markers cambia
+  useEffect(() => {
+    markersRef.current = markers;
+  }, [markers]);
 
-interface MapRouteProps {
-  editable?: boolean;
-  existingRoute?: {
-    id: string;
-    name: string;
-    waypoints: [number, number][];
+  // Manejar clic en el mapa (solo cuando está en modo edición)
+  const handleMapPress = (event) => {
+    if (!isEditing) return;
+
+    // Extraer coordenadas según la plataforma
+    let newCoords;
+    if (Platform.OS === 'web') {
+      newCoords = [event.latlng.lat, event.latlng.lng];
+    } else {
+      newCoords = [event.nativeEvent.coordinate.latitude, event.nativeEvent.coordinate.longitude];
+    }
+
+    // Usar la función de actualización de estado para prevenir problemas con closures
+    setMarkers(currentMarkers => [...currentMarkers, newCoords]);
   };
-  onRouteCreated?: (waypoints: [number, number][]) => void;
-}
 
-export default function MapRoute({ editable = false, existingRoute, onRouteCreated }: MapRouteProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const routingControlRef = useRef<L.Routing.Control | null>(null);
-  const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const [waypoints, setWaypoints] = useState<L.LatLng[]>([]);
-  const [mode, setMode] = useState<'routing' | 'custom'>('routing');
-  const [customPoints, setCustomPoints] = useState<L.Marker[]>([]);
+  // Eliminar un marcador
+  const removeMarker = (index) => {
+    setMarkers(currentMarkers => currentMarkers.filter((_, i) => i !== index));
+  };
 
-  useEffect(() => {
-    if (!mapRef.current) return;
+  // Limpiar todos los marcadores
+  const clearMarkers = () => {
+    setMarkers([]);
+  };
 
-    // Inicializar el mapa si no existe
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapRef.current).setView([19.432608, -99.133209], 13); // Ciudad de México como centro por defecto
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(mapInstanceRef.current);
-
-      // Crear una capa para los marcadores personalizados
-      markersLayerRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+  // Guardar cambios
+  const saveChanges = () => {
+    if (markers.length < 2) {
+      Alert.alert('Error', 'Se necesitan al menos dos puntos para crear una ruta');
+      return;
     }
 
-    const map = mapInstanceRef.current;
+    setLoading(true);
 
-    // Si tenemos ruta existente, la cargamos
-    if (existingRoute && existingRoute.waypoints.length > 0) {
-      const routeWaypoints = existingRoute.waypoints.map(wp => L.latLng(wp[0], wp[1]));
-      setWaypoints(routeWaypoints);
-      
-      if (mode === 'routing') {
-        routingControlRef.current = L.Routing.control({
-          waypoints: routeWaypoints,
-          routeWhileDragging: true,
-          lineOptions: {
-            styles: [{ color: '#2196F3', weight: 5 }]
-          },
-          showAlternatives: false,
-          addWaypoints: editable,
-          draggableWaypoints: editable
-        }).addTo(map);
-      }
-    } else if (editable && mode === 'routing') {
-      // Iniciar con waypoints vacíos si es editable y no hay ruta existente
-      routingControlRef.current = L.Routing.control({
-        waypoints: [],
-        routeWhileDragging: true,
-        lineOptions: {
-          styles: [{ color: '#2196F3', weight: 5 }]
-        },
-        showAlternatives: false,
-        addWaypoints: true,
-        draggableWaypoints: true
-      }).addTo(map);
+    // Llamar a la función de guardado proporcionada por el componente padre
+    if (onSaveWaypoints) {
+      onSaveWaypoints(markers);
     }
 
-    // Función para añadir puntos personalizados
-    const handleMapClick = (e: L.LeafletMouseEvent) => {
-      if (!editable) return;
-      
-      if (mode === 'routing') {
-        // Este modo ya está manejado por el routing control
-        return;
-      }
-      
-      if (mode === 'custom' && markersLayerRef.current) {
-        const marker = L.marker(e.latlng, {
-          draggable: true,
-          title: `Punto ${customPoints.length + 1}`
-        });
-        
-        // Popup para el marcador con botón para eliminar
-        const popupContent = document.createElement('div');
-        popupContent.innerHTML = `
-          <div>
-            <p>Punto ${customPoints.length + 1}</p>
-            <p>Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}</p>
-            <button class="delete-marker-btn">Eliminar</button>
-          </div>
-        `;
-        
-        const popup = L.popup().setContent(popupContent);
-        marker.bindPopup(popup);
-        
-        marker.on('dragend', updateCustomPoints);
-        
-        // Agregar evento al botón eliminar
-        setTimeout(() => {
-          const deleteBtn = popupContent.querySelector('.delete-marker-btn');
-          if (deleteBtn) {
-            deleteBtn.addEventListener('click', () => {
-              marker.remove();
-              updateCustomPoints();
-            });
-          }
-        }, 0);
-        
-        marker.addTo(markersLayerRef.current);
-        setCustomPoints(prev => [...prev, marker]);
-        
-        // Llamar a onRouteCreated si existe
-        updateCustomPoints();
-      }
-    };
+    setLoading(false);
+  };
 
-    const updateCustomPoints = () => {
-      const points = markersLayerRef.current?.getLayers() || [];
-      const validPoints = points
-        .filter(layer => layer instanceof L.Marker)
-        .map(layer => (layer as L.Marker).getLatLng());
-      
-      if (onRouteCreated && mode === 'custom') {
-        onRouteCreated(validPoints.map(point => [point.lat, point.lng] as [number, number]));
-      }
-    };
-
-    // Añadir evento de clic
-    map.on('click', handleMapClick);
-
-    // Manejo de waypoints en modo routing
-    if (editable && mode === 'routing' && routingControlRef.current) {
-      routingControlRef.current.on('routeselected', function(e) {
-        const routeWaypoints = routingControlRef.current?.getWaypoints() || [];
-        const validWaypoints = routeWaypoints
-          .filter(wp => wp.latLng !== null && wp.latLng !== undefined)
-          .map(wp => wp.latLng!);
-        
-        setWaypoints(validWaypoints);
-        
-        if (onRouteCreated) {
-          onRouteCreated(validWaypoints.map(wp => [wp.lat, wp.lng] as [number, number]));
-        }
-      });
-    }
-
-    return () => {
-      map.off('click', handleMapClick);
-      
-      if (routingControlRef.current && map.hasLayer(routingControlRef.current)) {
-        map.removeControl(routingControlRef.current);
-        routingControlRef.current = null;
-      }
-    };
-  }, [editable, existingRoute, onRouteCreated, mode, customPoints.length]);
-
-  // Limpiar el mapa al desmontar
-  useEffect(() => {
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // Cambiar entre modo de ruta y puntos personalizados
-  const toggleMode = () => {
-    const newMode = mode === 'routing' ? 'custom' : 'routing';
-    setMode(newMode);
-    
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    
-    // Limpiar el mapa actual
-    if (routingControlRef.current && map.hasLayer(routingControlRef.current)) {
-      map.removeControl(routingControlRef.current);
-      routingControlRef.current = null;
-    }
-    
-    if (markersLayerRef.current) {
-      markersLayerRef.current.clearLayers();
-      setCustomPoints([]);
-    }
-    
-    // Configurar el nuevo modo
-    if (newMode === 'routing' && editable) {
-      routingControlRef.current = L.Routing.control({
-        waypoints: [],
-        routeWhileDragging: true,
-        lineOptions: {
-          styles: [{ color: '#2196F3', weight: 5 }]
-        },
-        showAlternatives: false,
-        addWaypoints: true,
-        draggableWaypoints: true
-      }).addTo(map);
-    }
+  // Manejar el evento de que el mapa esté listo
+  const handleMapReady = () => {
+    setMapReady(true);
   };
 
   return (
-    <div className="map-container">
-      <div ref={mapRef} className="map-view"></div>
-      {editable && (
-        <div className="map-controls">
-          <div className="mode-toggle">
-            <button 
-              className={`mode-btn ${mode === 'routing' ? 'active' : ''}`} 
-              onClick={() => mode !== 'routing' && toggleMode()}
-            >
-              Modo Ruta
-            </button>
-            <button 
-              className={`mode-btn ${mode === 'custom' ? 'active' : ''}`} 
-              onClick={() => mode !== 'custom' && toggleMode()}
-            >
-              Puntos Personalizados
-            </button>
-          </div>
-          <div className="map-instructions">
-            {mode === 'routing' ? (
-              <p>Haga clic en el mapa para añadir puntos a la ruta</p>
-            ) : (
-              <p>Haga clic para añadir puntos personalizados. Arrastre para moverlos.</p>
-            )}
-          </div>
-        </div>
+    <ThemedView style={styles.container}>
+      {!mapReady && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={primaryColor} />
+          <ThemedText style={styles.loadingText}>Cargando mapa...</ThemedText>
+        </View>
       )}
-    </div>
+
+      {/* Usar el componente MapView importado dinámicamente */}
+      {MapView && (
+        <>
+          <MapView
+            style={[styles.map, !mapReady && { display: 'none' }]}
+            markers={markers}
+            onPress={handleMapPress}
+            onMapReady={handleMapReady}
+            editable={isEditing}
+          />
+
+          {mapReady && (
+            <View style={styles.controls}>
+              {isEditing && (
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.button, { backgroundColor: secondaryColor }]}
+                    onPress={clearMarkers}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="white" />
+                    <Text style={styles.buttonText}>Limpiar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.button, { backgroundColor: primaryColor }]}
+                    onPress={saveChanges}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Ionicons name="save-outline" size={20} color="white" />
+                    )}
+                    <Text style={styles.buttonText}>Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.helpText}>
+                <ThemedText style={styles.helpTextContent}>
+                  {isEditing 
+                    ? 'Toca el mapa para añadir puntos a la ruta' 
+                    : `${markers.length} puntos en la ruta`}
+                </ThemedText>
+              </View>
+            </View>
+          )}
+        </>
+      )}
+    </ThemedView>
   );
-}
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  controls: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    zIndex: 5,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginLeft: 6,
+  },
+  helpText: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  helpTextContent: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'white',
+  },
+});
+
+export default MapRoute;

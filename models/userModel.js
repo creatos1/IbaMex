@@ -1,202 +1,192 @@
 
-const bcrypt = require('bcryptjs');
-const dotenv = require('dotenv');
 const sql = require('mssql');
+const config = require('../config/db');
 
-
-dotenv.config();
-
-class User {
-  // Find user by ID
-  static async findById(id) {
-    try {
-      const request = new sql.Request();
-      const result = await request.query`SELECT * FROM Users WHERE id = ${id}`;
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error finding user by ID:', error);
-      throw error;
-    }
-  }
-
-  // Find user by username
-  static async findByUsername(username) {
-    try {
-      const request = new sql.Request();
-      const result = await request.query`SELECT * FROM Users WHERE username = ${username}`;
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error finding user by username:', error);
-      throw error;
-    }
-  }
-
-  // Find user by email
-  static async findByEmail(email) {
-    try {
-      const request = new sql.Request();
-      const result = await request.query`SELECT * FROM Users WHERE email = ${email}`;
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error finding user by email:', error);
-      throw error;
-    }
-  }
-
-  // Find one user by any criteria (simplified version of MongoDB's findOne)
-  static async findOne(criteria) {
-    try {
-      const request = new sql.Request();
-      
-      // Simple case - email lookup
-      if (criteria.email) {
-        return await this.findByEmail(criteria.email);
-      }
-      
-      // Handle direct field matching (simplified)
-      let whereClause = '';
-      for (const [key, value] of Object.entries(criteria)) {
-        if (key !== '$or') {
-          if (whereClause) whereClause += ' AND ';
-          request.input(key, value);
-          whereClause += `${key} = @${key}`;
-        }
-      }
-      
-      // Simple implementation for $or operator
-      if (criteria.$or) {
-        const orClauses = [];
-        let i = 0;
-        
-        for (const condition of criteria.$or) {
-          for (const [key, value] of Object.entries(condition)) {
-            const paramName = `${key}${i}`;
-            request.input(paramName, value);
-            orClauses.push(`${key} = @${paramName}`);
-            i++;
-          }
-        }
-        
-        if (orClauses.length > 0) {
-          if (whereClause) whereClause += ' AND ';
-          whereClause += `(${orClauses.join(' OR ')})`;
-        }
-      }
-      
-      const query = `SELECT * FROM Users WHERE ${whereClause}`;
-      const result = await request.query(query);
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error finding user:', error);
-      throw error;
-    }
-  }
-
-  // Create a new user
+class UserModel {
   static async create(userData) {
     try {
-      const { username, email, password, role = 'user', mfaEnabled = false, status = 'active' } = userData;
+      const pool = await sql.connect(config);
       
-      const request = new sql.Request();
-      request.input('username', sql.VarChar, username);
-      request.input('email', sql.VarChar, email);
-      request.input('password', sql.VarChar, password);
-      request.input('role', sql.VarChar, role);
-      request.input('mfaEnabled', sql.Bit, mfaEnabled ? 1 : 0);
-      request.input('status', sql.VarChar, status);
+      // Verificar si la tabla existe
+      const tableExists = await pool.request()
+        .query(`
+          SELECT * FROM INFORMATION_SCHEMA.TABLES 
+          WHERE TABLE_NAME = 'Users'
+        `);
       
-      const result = await request.query(
-        'INSERT INTO Users (username, email, password, role, mfaEnabled, status) OUTPUT INSERTED.* VALUES (@username, @email, @password, @role, @mfaEnabled, @status)'
-      );
-      
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
-  }
-
-  // Update a user
-  static async update(id, updateData) {
-    try {
-      const request = new sql.Request();
-      request.input('id', id);
-      
-      // Build query dynamically
-      const setStatements = [];
-      for (const [key, value] of Object.entries(updateData)) {
-        request.input(key, value);
-        setStatements.push(`${key} = @${key}`);
+      // Si la tabla no existe, crearla
+      if (tableExists.recordset.length === 0) {
+        await pool.request().query(`
+          CREATE TABLE Users (
+            Id INT IDENTITY(1,1) PRIMARY KEY,
+            Username NVARCHAR(100) NOT NULL,
+            Email NVARCHAR(100) NOT NULL UNIQUE,
+            Password NVARCHAR(255) NOT NULL,
+            Role NVARCHAR(20) DEFAULT 'user',
+            MfaEnabled BIT DEFAULT 0,
+            Status NVARCHAR(20) DEFAULT 'active',
+            CreatedAt DATETIME DEFAULT GETDATE()
+          )
+        `);
       }
       
-      const query = `UPDATE Users SET ${setStatements.join(', ')} 
-                    OUTPUT INSERTED.* WHERE id = @id`;
+      // Verificar si la columna status existe
+      const columnExists = await pool.request()
+        .query(`
+          SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'Status'
+        `);
       
-      const result = await request.query(query);
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
-  }
-
-  // Delete a user
-  static async delete(id) {
-    try {
-      const request = new sql.Request();
-      const result = await request.query`DELETE FROM Users OUTPUT DELETED.* WHERE id = ${id}`;
-      return result.recordset[0];
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
-  }
-
-  // Save changes (for compatibility with MongoDB model)
-  async save() {
-    try {
-      const request = new sql.Request();
-      
-      if (this.id) {
-        // Update existing user
-        request.input('id', this.id);
-        
-        const setStatements = [];
-        for (const [key, value] of Object.entries(this)) {
-          if (key !== 'id') {
-            request.input(key, value);
-            setStatements.push(`${key} = @${key}`);
-          }
-        }
-        
-        const query = `UPDATE Users SET ${setStatements.join(', ')} 
-                      OUTPUT INSERTED.* WHERE id = @id`;
-        
-        const result = await request.query(query);
-        return result.recordset[0];
-      } else {
-        // Create new user
-        const keys = Object.keys(this);
-        const columns = keys.join(', ');
-        const paramNames = keys.map(k => `@${k}`).join(', ');
-        
-        // Set input parameters
-        for (const [key, value] of Object.entries(this)) {
-          request.input(key, value);
-        }
-        
-        const query = `INSERT INTO Users (${columns}) 
-                      OUTPUT INSERTED.* VALUES (${paramNames})`;
-        
-        const result = await request.query(query);
-        this.id = result.recordset[0].id;
-        return result.recordset[0];
+      // Si la columna no existe, añadirla
+      if (columnExists.recordset.length === 0) {
+        await pool.request().query(`
+          ALTER TABLE Users ADD Status NVARCHAR(20) DEFAULT 'active'
+        `);
       }
-    } catch (error) {
-      console.error('Error saving user:', error);
-      throw error;
+      
+      // Insertar el usuario
+      const result = await pool.request()
+        .input('username', sql.NVarChar, userData.username)
+        .input('email', sql.NVarChar, userData.email)
+        .input('password', sql.NVarChar, userData.password)
+        .input('role', sql.NVarChar, userData.role || 'user')
+        .input('mfaEnabled', sql.Bit, userData.mfaEnabled || 0)
+        .input('status', sql.NVarChar, userData.status || 'active')
+        .query(`
+          INSERT INTO Users (Username, Email, Password, Role, MfaEnabled, Status)
+          VALUES (@username, @email, @password, @role, @mfaEnabled, @status);
+          SELECT SCOPE_IDENTITY() AS Id
+        `);
+      
+      return result.recordset[0].Id;
+    } catch (err) {
+      console.error('Error creating user:', err);
+      throw err;
+    }
+  }
+
+  static async findByEmail(email) {
+    try {
+      const pool = await sql.connect(config);
+      const result = await pool.request()
+        .input('email', sql.NVarChar, email)
+        .query('SELECT * FROM Users WHERE Email = @email');
+      
+      return result.recordset[0];
+    } catch (err) {
+      console.error('Error finding user by email:', err);
+      throw err;
+    }
+  }
+
+  static async findByUsername(username) {
+    try {
+      const pool = await sql.connect(config);
+      const result = await pool.request()
+        .input('username', sql.NVarChar, username)
+        .query('SELECT * FROM Users WHERE Username = @username');
+      
+      return result.recordset[0];
+    } catch (err) {
+      console.error('Error finding user by username:', err);
+      throw err;
+    }
+  }
+
+  static async findById(id) {
+    try {
+      const pool = await sql.connect(config);
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .query('SELECT * FROM Users WHERE Id = @id');
+      
+      return result.recordset[0];
+    } catch (err) {
+      console.error('Error finding user by id:', err);
+      throw err;
+    }
+  }
+
+  static async find(query = {}) {
+    try {
+      const pool = await sql.connect(config);
+      
+      // Construir consulta según los criterios
+      let sqlQuery = 'SELECT * FROM Users WHERE 1=1';
+      const request = pool.request();
+      
+      if (query.role) {
+        sqlQuery += ' AND Role = @role';
+        request.input('role', sql.NVarChar, query.role);
+      }
+      
+      if (query.status) {
+        sqlQuery += ' AND Status = @status';
+        request.input('status', sql.NVarChar, query.status);
+      }
+      
+      const result = await request.query(sqlQuery);
+      return result.recordset;
+    } catch (err) {
+      console.error('Error finding users:', err);
+      throw err;
+    }
+  }
+
+  static async update(id, userData) {
+    try {
+      const pool = await sql.connect(config);
+      
+      // Construir consulta dinámica
+      let sqlQuery = 'UPDATE Users SET ';
+      const request = pool.request();
+      request.input('id', sql.Int, id);
+      
+      const updateFields = [];
+      
+      if (userData.username) {
+        updateFields.push('Username = @username');
+        request.input('username', sql.NVarChar, userData.username);
+      }
+      
+      if (userData.email) {
+        updateFields.push('Email = @email');
+        request.input('email', sql.NVarChar, userData.email);
+      }
+      
+      if (userData.password) {
+        updateFields.push('Password = @password');
+        request.input('password', sql.NVarChar, userData.password);
+      }
+      
+      if (userData.role) {
+        updateFields.push('Role = @role');
+        request.input('role', sql.NVarChar, userData.role);
+      }
+      
+      if (userData.mfaEnabled !== undefined) {
+        updateFields.push('MfaEnabled = @mfaEnabled');
+        request.input('mfaEnabled', sql.Bit, userData.mfaEnabled ? 1 : 0);
+      }
+      
+      if (userData.status) {
+        updateFields.push('Status = @status');
+        request.input('status', sql.NVarChar, userData.status);
+      }
+      
+      if (updateFields.length === 0) {
+        return false; // No hay campos para actualizar
+      }
+      
+      sqlQuery += updateFields.join(', ') + ' WHERE Id = @id';
+      
+      const result = await request.query(sqlQuery);
+      return result.rowsAffected[0] > 0;
+    } catch (err) {
+      console.error('Error updating user:', err);
+      throw err;
     }
   }
 }
 
-module.exports = User;
+module.exports = UserModel;

@@ -86,7 +86,7 @@ router.post('/login', async (req, res) => {
 
   try {
     // Buscar usuario
-    const user = await UserModel.findOne({ email });
+    const user = await UserModel.findByEmail(email);
     if (!user) {
       return res.status(400).json({ message: 'Credenciales inválidas' });
     }

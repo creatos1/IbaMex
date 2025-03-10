@@ -1,18 +1,21 @@
 
-const { pool } = require('../config/db');
+const { pool, sql } = require('../config/db');
 
 class Route {
   // Obtener todas las rutas
   static async findAll() {
     try {
-      const result = await pool.query('SELECT * FROM Routes WHERE active = true');
+      const result = await pool.request()
+        .query('SELECT * FROM Routes WHERE active = 1');
       
       // Obtener las paradas para cada ruta
-      const routes = await Promise.all(result.rows.map(async (route) => {
-        const stopsResult = await pool.query('SELECT * FROM RouteStops WHERE routeId = $1', [route.id]);
+      const routes = await Promise.all(result.recordset.map(async (route) => {
+        const stopsResult = await pool.request()
+          .input('routeId', sql.Int, route.id)
+          .query('SELECT * FROM RouteStops WHERE routeId = @routeId');
         
         // Formatear las paradas en el formato esperado
-        const stops = stopsResult.rows.map(stop => ({
+        const stops = stopsResult.recordset.map(stop => ({
           name: stop.name,
           location: {
             lat: parseFloat(stop.lat),
@@ -33,19 +36,23 @@ class Route {
   // Buscar ruta por ID
   static async findById(id) {
     try {
-      const result = await pool.query('SELECT * FROM Routes WHERE id = $1', [id]);
+      const result = await pool.request()
+        .input('id', sql.Int, id)
+        .query('SELECT * FROM Routes WHERE id = @id');
       
-      if (result.rows.length === 0) {
+      if (result.recordset.length === 0) {
         return null;
       }
       
-      const route = result.rows[0];
+      const route = result.recordset[0];
       
       // Obtener las paradas
-      const stopsResult = await pool.query('SELECT * FROM RouteStops WHERE routeId = $1', [route.id]);
+      const stopsResult = await pool.request()
+        .input('routeId', sql.Int, route.id)
+        .query('SELECT * FROM RouteStops WHERE routeId = @routeId');
       
       // Formatear las paradas
-      const stops = stopsResult.rows.map(stop => ({
+      const stops = stopsResult.recordset.map(stop => ({
         name: stop.name,
         location: {
           lat: parseFloat(stop.lat),
@@ -63,19 +70,23 @@ class Route {
   // Buscar ruta por routeId
   static async findByRouteId(routeId) {
     try {
-      const result = await pool.query('SELECT * FROM Routes WHERE routeId = $1', [routeId]);
+      const result = await pool.request()
+        .input('routeId', sql.VarChar, routeId)
+        .query('SELECT * FROM Routes WHERE routeId = @routeId');
       
-      if (result.rows.length === 0) {
+      if (result.recordset.length === 0) {
         return null;
       }
       
-      const route = result.rows[0];
+      const route = result.recordset[0];
       
       // Obtener las paradas
-      const stopsResult = await pool.query('SELECT * FROM RouteStops WHERE routeId = $1', [route.id]);
+      const stopsResult = await pool.request()
+        .input('routeId', sql.Int, route.id)
+        .query('SELECT * FROM RouteStops WHERE routeId = @routeId');
       
       // Formatear las paradas
-      const stops = stopsResult.rows.map(stop => ({
+      const stops = stopsResult.recordset.map(stop => ({
         name: stop.name,
         location: {
           lat: parseFloat(stop.lat),
@@ -92,132 +103,172 @@ class Route {
 
   // Crear una nueva ruta
   static async create(routeData) {
-    const client = await pool.connect();
+    const transaction = new sql.Transaction(pool);
     
     try {
-      await client.query('BEGIN');
+      await transaction.begin();
       
-      const { routeId, name, description = '', stops = [], active = true } = routeData;
+      const { routeId, name, description = '', stops = [], waypoints = [], active = true } = routeData;
       
       // Insertar la ruta principal
-      const routeResult = await client.query(
-        'INSERT INTO Routes (routeId, name, description, active) VALUES ($1, $2, $3, $4) RETURNING *',
-        [routeId, name, description, active]
-      );
+      const routeResult = await new sql.Request(transaction)
+        .input('routeId', sql.VarChar, routeId)
+        .input('name', sql.VarChar, name)
+        .input('description', sql.VarChar, description)
+        .input('active', sql.Bit, active)
+        .query('INSERT INTO Routes (routeId, name, description, active) OUTPUT INSERTED.* VALUES (@routeId, @name, @description, @active)');
       
-      const newRoute = routeResult.rows[0];
+      const newRoute = routeResult.recordset[0];
       
       // Insertar las paradas
       if (stops && stops.length > 0) {
         for (const stop of stops) {
-          await client.query(
-            'INSERT INTO RouteStops (routeId, name, lat, lng) VALUES ($1, $2, $3, $4)',
-            [newRoute.id, stop.name, stop.location.lat, stop.location.lng]
-          );
+          await new sql.Request(transaction)
+            .input('routeId', sql.Int, newRoute.id)
+            .input('name', sql.VarChar, stop.name)
+            .input('lat', sql.Float, stop.location.lat)
+            .input('lng', sql.Float, stop.location.lng)
+            .query('INSERT INTO RouteStops (routeId, name, lat, lng) VALUES (@routeId, @name, @lat, @lng)');
         }
       }
       
-      await client.query('COMMIT');
+      // Insertar los waypoints si existen
+      if (waypoints && waypoints.length > 0) {
+        let order = 0;
+        for (const point of waypoints) {
+          await new sql.Request(transaction)
+            .input('routeId', sql.Int, newRoute.id)
+            .input('lat', sql.Float, point[0])
+            .input('lng', sql.Float, point[1])
+            .input('order', sql.Int, order++)
+            .query('INSERT INTO RouteWaypoints (routeId, lat, lng, pointOrder) VALUES (@routeId, @lat, @lng, @order)');
+        }
+      }
+      
+      await transaction.commit();
       
       // Obtener la ruta completa con paradas
       return await Route.findById(newRoute.id);
     } catch (error) {
-      await client.query('ROLLBACK');
+      await transaction.rollback();
       console.error('Error al crear ruta:', error);
       throw error;
-    } finally {
-      client.release();
     }
   }
 
   // Actualizar ruta
   static async update(id, updateData) {
-    const client = await pool.connect();
+    const transaction = new sql.Transaction(pool);
     
     try {
-      await client.query('BEGIN');
+      await transaction.begin();
       
-      const { name, description, stops, active } = updateData;
+      const { name, description, stops, waypoints, active } = updateData;
       
       // Actualizar datos básicos de la ruta
       if (name || description !== undefined || active !== undefined) {
-        const updateFields = [];
-        const updateValues = [];
-        let valueIndex = 1;
+        const request = new sql.Request(transaction);
+        let updateQuery = 'UPDATE Routes SET ';
+        const updateParts = [];
         
         if (name) {
-          updateFields.push(`name = $${valueIndex}`);
-          updateValues.push(name);
-          valueIndex++;
+          request.input('name', sql.VarChar, name);
+          updateParts.push('name = @name');
         }
         
         if (description !== undefined) {
-          updateFields.push(`description = $${valueIndex}`);
-          updateValues.push(description);
-          valueIndex++;
+          request.input('description', sql.VarChar, description);
+          updateParts.push('description = @description');
         }
         
         if (active !== undefined) {
-          updateFields.push(`active = $${valueIndex}`);
-          updateValues.push(active);
-          valueIndex++;
+          request.input('active', sql.Bit, active);
+          updateParts.push('active = @active');
         }
         
-        if (updateFields.length > 0) {
-          const updateQuery = `UPDATE Routes SET ${updateFields.join(', ')} WHERE id = $${valueIndex} RETURNING *`;
-          await client.query(updateQuery, [...updateValues, id]);
-        }
+        updateQuery += updateParts.join(', ') + ' WHERE id = @id';
+        request.input('id', sql.Int, id);
+        
+        await request.query(updateQuery);
       }
       
       // Actualizar paradas si se proporcionan
       if (stops) {
         // Eliminar paradas existentes
-        await client.query('DELETE FROM RouteStops WHERE routeId = $1', [id]);
+        await new sql.Request(transaction)
+          .input('routeId', sql.Int, id)
+          .query('DELETE FROM RouteStops WHERE routeId = @routeId');
         
         // Insertar nuevas paradas
         for (const stop of stops) {
-          await client.query(
-            'INSERT INTO RouteStops (routeId, name, lat, lng) VALUES ($1, $2, $3, $4)',
-            [id, stop.name, stop.location.lat, stop.location.lng]
-          );
+          await new sql.Request(transaction)
+            .input('routeId', sql.Int, id)
+            .input('name', sql.VarChar, stop.name)
+            .input('lat', sql.Float, stop.location.lat)
+            .input('lng', sql.Float, stop.location.lng)
+            .query('INSERT INTO RouteStops (routeId, name, lat, lng) VALUES (@routeId, @name, @lat, @lng)');
         }
       }
       
-      await client.query('COMMIT');
+      // Actualizar waypoints si se proporcionan
+      if (waypoints) {
+        // Eliminar waypoints existentes
+        await new sql.Request(transaction)
+          .input('routeId', sql.Int, id)
+          .query('DELETE FROM RouteWaypoints WHERE routeId = @routeId');
+        
+        // Insertar nuevos waypoints
+        let order = 0;
+        for (const point of waypoints) {
+          await new sql.Request(transaction)
+            .input('routeId', sql.Int, id)
+            .input('lat', sql.Float, point[0])
+            .input('lng', sql.Float, point[1])
+            .input('order', sql.Int, order++)
+            .query('INSERT INTO RouteWaypoints (routeId, lat, lng, pointOrder) VALUES (@routeId, @lat, @lng, @order)');
+        }
+      }
+      
+      await transaction.commit();
       
       // Obtener la ruta actualizada
       return await Route.findById(id);
     } catch (error) {
-      await client.query('ROLLBACK');
+      await transaction.rollback();
       console.error('Error al actualizar ruta:', error);
       throw error;
-    } finally {
-      client.release();
     }
   }
 
   // Eliminar ruta
   static async delete(id) {
-    const client = await pool.connect();
+    const transaction = new sql.Transaction(pool);
     
     try {
-      await client.query('BEGIN');
+      await transaction.begin();
       
       // Eliminar paradas asociadas
-      await client.query('DELETE FROM RouteStops WHERE routeId = $1', [id]);
+      await new sql.Request(transaction)
+        .input('routeId', sql.Int, id)
+        .query('DELETE FROM RouteStops WHERE routeId = @routeId');
+      
+      // Eliminar waypoints asociados
+      await new sql.Request(transaction)
+        .input('routeId', sql.Int, id)
+        .query('DELETE FROM RouteWaypoints WHERE routeId = @routeId');
       
       // Eliminar la ruta
-      const result = await client.query('DELETE FROM Routes WHERE id = $1 RETURNING *', [id]);
+      const result = await new sql.Request(transaction)
+        .input('id', sql.Int, id)
+        .query('DELETE FROM Routes WHERE id = @id OUTPUT DELETED.*');
       
-      await client.query('COMMIT');
+      await transaction.commit();
       
-      return result.rows[0];
+      return result.recordset[0];
     } catch (error) {
-      await client.query('ROLLBACK');
+      await transaction.rollback();
       console.error('Error al eliminar ruta:', error);
       throw error;
-    } finally {
-      client.release();
     }
   }
 }
