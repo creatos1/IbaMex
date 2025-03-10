@@ -32,7 +32,7 @@ interface AuthContextType {
 const API_URL = Platform.OS === 'web' 
   ? window.location.origin + '/api' 
   : __DEV__ 
-    ? 'http://10.2.3.157:3000/api' // Usando la IP local actual
+    ? 'http://192.168.100.13:3000/api' // Usando la IP local actual
     : 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
 
 // Fallback URL si no funciona la anterior
@@ -42,13 +42,13 @@ const getApiUrl = () => {
       return window.location.origin + '/api';
     } else if (__DEV__) {
       // Usar la IP actual de tu PC local
-      return 'http://10.2.3.157:3000/api';
+      return 'http://192.168.100.13:3000/api';
     } else {
       return 'https://' + (process.env.REPL_SLUG || 'ibamex') + '.' + (process.env.REPL_OWNER || 'repl') + '.repl.co/api';
     }
   } catch (e) {
     console.log('Error obteniendo API URL:', e);
-    return 'http://10.2.3.157:3000/api'; // Fallback
+    return 'http://192.168.100.13:3000/api'; // Fallback
   }
 };
 

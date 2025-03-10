@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MiPrimeraApp",
-    "slug": "MiPrimeraApp",
+    "name": "BACK",
+    "slug": "BACK",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

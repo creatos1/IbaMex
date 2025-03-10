@@ -27,7 +27,7 @@ const startServer = async () => {
 
     // Configuración CORS ampliada para desarrollo
     app.use(cors({
-      origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.2.3.157:3000', 'http://localhost:19006', 'exp://localhost:19000', 'exp://127.0.0.1:19000', 'exp://10.2.3.157:19000', 'http://10.0.2.2:3000', 'http://10.0.2.2:19000', 'http://10.0.2.2:19006', '*'],
+      origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.2.3.157:3000', 'http://localhost:19006', 'exp://localhost:19000', 'exp://127.0.0.1:19000', 'exp://10.2.3.157:19000', 'http://10.0.2.2:3000', 'http://10.0.2.2:19000', 'http://10.0.2.2:19006', 'http://192.168.100.13',  'http://192.168.100.13:3000','*'],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true

@@ -1,44 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   StyleSheet, 
   TextInput, 
   TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform,
-  Alert,
-  ActivityIndicator
+  ActivityIndicator, 
+  Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { useAuth } from '@/hooks/useAuth';
-import { FontAwesome } from '@expo/vector-icons';
+import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useAuth } from '@/hooks/useAuth';
 
-const MfaVerificationScreen = () => {
+export default function MfaVerificationScreen() {
   const [code, setCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [countdown, setCountdown] = useState(30);
-  const { needsMfa, verifyMfa, error } = useAuth();
+  const { verifyMfa, isLoading, error } = useAuth();
   const router = useRouter();
 
   const primaryColor = useThemeColor({ light: '#0a7ea4', dark: '#2f95dc' }, 'tint');
-  const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-
-  // Redirigir si no se necesita MFA
-  useEffect(() => {
-    if (!needsMfa) {
-      router.replace('/');
-    }
-  }, [needsMfa, router]);
-
-  // Contador para reenvío de código
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
 
   const handleVerify = async () => {
     if (!code) {
@@ -46,45 +26,26 @@ const MfaVerificationScreen = () => {
       return;
     }
 
-    if (code.length < 6) {
-      Alert.alert('Error', 'El código debe tener 6 dígitos');
-      return;
-    }
-
-    setIsLoading(true);
     try {
       const success = await verifyMfa(code);
       if (success) {
-        router.replace('/');
-      } else {
-        Alert.alert('Error', error || 'Código inválido. Por favor intenta de nuevo.');
+        // La navegación será manejada por el hook useAuth
+      } else if (error) {
+        Alert.alert('Error', error);
       }
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      Alert.alert('Error', 'Ocurrió un error al verificar el código. Por favor intenta de nuevo.');
     }
   };
 
-  const handleResendCode = () => {
-    // Aquí iría la lógica para reenviar el código
-    Alert.alert('Reenviar código', 'Se ha enviado un nuevo código a tu correo electrónico.');
-    setCountdown(30);
-  };
-
   return (
-    <KeyboardAvoidingView 
-      style={[styles.container, { backgroundColor }]} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.iconContainer}>
-        <FontAwesome name="lock" size={50} color={primaryColor} />
-      </View>
+    <ThemedView style={styles.container}>
+      <View style={styles.contentContainer}>
+        <ThemedText style={styles.title}>Verificación en dos pasos</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          Por favor ingresa el código que fue enviado a tu correo electrónico.
+        </ThemedText>
 
-      <ThemedText style={styles.title}>Verificación en dos pasos</ThemedText>
-      <ThemedText style={styles.subtitle}>
-        Ingresa el código de verificación que hemos enviado a tu correo electrónico
-      </ThemedText>
-
-      <View style={styles.formContainer}>
         <TextInput
           style={styles.input}
           placeholder="Código de verificación"
@@ -92,38 +53,25 @@ const MfaVerificationScreen = () => {
           onChangeText={setCode}
           keyboardType="number-pad"
           maxLength={6}
-          autoFocus
         />
 
         <TouchableOpacity 
-          style={[styles.button, { backgroundColor: primaryColor }]}
+          style={[styles.button, {backgroundColor: primaryColor}]}
           onPress={handleVerify}
           disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <ThemedText style={styles.buttonText}>Verificar</ThemedText>
+            <ThemedText style={styles.buttonText}>
+              Verificar
+            </ThemedText>
           )}
         </TouchableOpacity>
-
-        <View style={styles.resendContainer}>
-          {countdown > 0 ? (
-            <ThemedText style={styles.countdownText}>
-              Puedes reenviar el código en {countdown} segundos
-            </ThemedText>
-          ) : (
-            <TouchableOpacity onPress={handleResendCode}>
-              <ThemedText style={[styles.resendText, { color: primaryColor }]}>
-                Reenviar código
-              </ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
       </View>
-    </KeyboardAvoidingView>
+    </ThemedView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -131,38 +79,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  iconContainer: {
+  contentContainer: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
     marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
     marginBottom: 30,
+    textAlign: 'center',
     opacity: 0.7,
-  },
-  formContainer: {
-    width: '100%',
   },
   input: {
     height: 50,
+    width: '100%',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
     marginBottom: 20,
     paddingHorizontal: 10,
+    backgroundColor: '#fff',
     fontSize: 18,
     textAlign: 'center',
-    letterSpacing: 5,
-    backgroundColor: '#fff',
+    letterSpacing: 8,
   },
   button: {
+    width: '100%',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -172,18 +119,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  resendContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  countdownText: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  resendText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
 });
-
-export default MfaVerificationScreen;

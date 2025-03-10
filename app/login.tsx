@@ -8,35 +8,38 @@ import {
   Image, 
   KeyboardAvoidingView, 
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { signIn, error, isLoading, requireMfa } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert('Error', 'Por favor ingresa tu usuario y contraseña');
+    if (!email || !password) {
+      Alert.alert('Error', 'Por favor ingresa tu email y contraseña');
       return;
     }
 
-    setIsLoading(true);
     try {
-      const success = await login(username, password);
+      const success = await signIn(email, password);
       if (success) {
-        // La navegación se maneja en el componente principal basado en el rol del usuario
+        if (requireMfa) {
+          // Redirigir a la pantalla de verificación MFA
+          router.push('/mfa-verification');
+        }
+        // Si no requiere MFA, el hook useAuth manejará la navegación
+      } else if (error) {
+        Alert.alert('Error', error);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Credenciales incorrectas. Por favor intenta de nuevo.');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      Alert.alert('Error', 'Ocurrió un error al iniciar sesión. Por favor intenta de nuevo.');
     }
   };
 
@@ -60,10 +63,11 @@ export default function LoginScreen() {
       <View style={styles.formContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Usuario"
-          value={username}
-          onChangeText={setUsername}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
         
         <TextInput
@@ -79,9 +83,13 @@ export default function LoginScreen() {
           onPress={handleLogin}
           disabled={isLoading}
         >
-          <ThemedText style={styles.buttonText}>
-            {isLoading ? 'Cargando...' : 'Iniciar Sesión'}
-          </ThemedText>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <ThemedText style={styles.buttonText}>
+              Iniciar Sesión
+            </ThemedText>
+          )}
         </TouchableOpacity>
         
         <TouchableOpacity 

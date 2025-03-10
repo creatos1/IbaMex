@@ -1,62 +1,92 @@
+
 import { NextResponse } from 'next/server';
-import * as jwt from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
-// Define rutas protegidas por rol
-const PROTECTED_ROUTES = {
-  admin: ['/admin', '/(admin)'],
-  driver: ['/driver']
-};
+// Routes that are public and don't require authentication
+const publicRoutes = [
+  '/login',
+  '/register',
+  '/mfa-verification',
+  '/api/login',
+  '/api/register',
+  '/api/verify-mfa',
+  '/_next',
+  '/static',
+  '/favicon.ico',
+];
 
-export function middleware(request) {
-  // Obtener token del localStorage (solo funciona en el cliente)
-  // Para el middleware, verificamos si hay una cookie de token
-  const token = request.cookies.get('userToken')?.value;
+// Routes that require admin privileges
+const adminRoutes = [
+  '/admin',
+  '/api/admin',
+  '/api/users',
+];
 
-  const { pathname } = request.nextUrl;
+// Routes that require driver privileges
+const driverRoutes = [
+  '/driver',
+  '/api/driver',
+];
 
-  // Si no hay token y es una ruta protegida, redirigir al login
-  if (!token) {
-    // Verificar si es una ruta protegida
-    const isAdminRoute = PROTECTED_ROUTES.admin.some(route => pathname.startsWith(route));
-    const isDriverRoute = PROTECTED_ROUTES.driver.some(route => pathname.startsWith(route));
-
-    if (isAdminRoute || isDriverRoute) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-
-    // Si no es ruta protegida, continuar
+export async function middleware(request) {
+  const path = request.nextUrl.pathname;
+  
+  // Allow public routes
+  if (publicRoutes.some(route => path.startsWith(route))) {
     return NextResponse.next();
   }
-
+  
+  // Check for Authorization header or cookie
+  const authHeader = request.headers.get('authorization');
+  const cookie = request.cookies.get('auth_token');
+  let token = null;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (cookie) {
+    token = cookie.value;
+  }
+  
+  // Redirect to login if no token
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+  
   try {
-    // Decodificar token
-    const decodedToken = jwt.jwtDecode(token);
-    const userRole = decodedToken.role;
-
-    // Verificar permisos por rol
-    if (pathname.startsWith('/(admin)') && userRole !== 'admin') {
+    // Verify token and check user role
+    const decoded = jwtDecode(token);
+    const { role } = decoded;
+    
+    // Check if admin route but user is not admin
+    if (adminRoutes.some(route => path.startsWith(route)) && role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url));
     }
-
-    if (pathname.startsWith('/driver') && userRole !== 'driver') {
+    
+    // Check if driver route but user is not driver
+    if (driverRoutes.some(route => path.startsWith(route)) && role !== 'driver' && role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url));
     }
-
-    // Usuario autenticado con los permisos correctos, continuar
+    
+    // Continue with the request
     return NextResponse.next();
   } catch (error) {
-    console.error('Error verificando token:', error);
-
-    // Error de verificación, redirigir al login
-    return NextResponse.redirect(new URL('/', request.url));
+    // Invalid token, redirect to login
+    console.error('Error verifying token:', error);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 }
 
-// Solo verificar rutas específicas
+// Configure which paths the middleware runs on
 export const config = {
   matcher: [
-    '/(admin)/:path*',
-    '/driver',
-    '/(tabs)/profile',
+    /*
+     * Match all request paths except for:
+     * 1. /api/auth routes
+     * 2. /_next (Next.js internals)
+     * 3. /_static (static files)
+     * 4. /_vercel (Vercel internals)
+     * 5. /favicon.ico, /manifest.json (browser requests)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
