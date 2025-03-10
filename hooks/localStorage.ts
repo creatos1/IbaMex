@@ -1,18 +1,38 @@
 
-// Este archivo determina qué implementación usar
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-let localStorage: any;
+const useStorage = () => {
+  const getItem = async (key: string) => {
+    try {
+      const value = await AsyncStorage.getItem(key);
+      return value;
+    } catch (error) {
+      console.error('Error al obtener datos:', error);
+      return null;
+    }
+  };
 
-// Evitamos el error de localStorage no disponible
-if (Platform.OS === 'web') {
-  // En web, usamos la implementación web
-  const WebStorage = require('./localStorage.web').default;
-  localStorage = WebStorage;
-} else {
-  // En nativo, usamos AsyncStorage
-  const NativeStorage = require('./localStorage.native').default;
-  localStorage = NativeStorage;
-}
+  const setItem = async (key: string, value: string) => {
+    try {
+      await AsyncStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.error('Error al guardar datos:', error);
+      return false;
+    }
+  };
 
-export default localStorage;
+  const removeItem = async (key: string) => {
+    try {
+      await AsyncStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar datos:', error);
+      return false;
+    }
+  };
+
+  return { getItem, setItem, removeItem };
+};
+
+export default useStorage;

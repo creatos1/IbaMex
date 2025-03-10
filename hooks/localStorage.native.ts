@@ -1,27 +1,38 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Este archivo maneja localStorage en entornos nativos
-export default {
-  getItem: async (key: string) => {
+const useStorage = () => {
+  const getItem = async (key: string) => {
     try {
-      return await AsyncStorage.getItem(key);
-    } catch (e) {
+      const value = await AsyncStorage.getItem(key);
+      return value;
+    } catch (error) {
+      console.error('Error al obtener datos:', error);
       return null;
     }
-  },
-  setItem: async (key: string, value: string) => {
+  };
+
+  const setItem = async (key: string, value: string) => {
     try {
       await AsyncStorage.setItem(key, value);
-    } catch (e) {
-      // Ignorar errores
+      return true;
+    } catch (error) {
+      console.error('Error al guardar datos:', error);
+      return false;
     }
-  },
-  removeItem: async (key: string) => {
+  };
+
+  const removeItem = async (key: string) => {
     try {
       await AsyncStorage.removeItem(key);
-    } catch (e) {
-      // Ignorar errores
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar datos:', error);
+      return false;
     }
-  }
+  };
+
+  return { getItem, setItem, removeItem };
 };
+
+export default useStorage;

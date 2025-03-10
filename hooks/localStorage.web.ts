@@ -1,25 +1,35 @@
 
-// Este archivo maneja localStorage en entornos web
-export default {
-  getItem: (key: string) => {
+const useStorage = () => {
+  const getItem = async (key: string) => {
     try {
-      return localStorage.getItem(key);
-    } catch (e) {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      console.error('Error al obtener datos:', error);
       return null;
     }
-  },
-  setItem: (key: string, value: string) => {
+  };
+
+  const setItem = async (key: string, value: string) => {
     try {
-      localStorage.setItem(key, value);
-    } catch (e) {
-      // Ignorar errores
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.error('Error al guardar datos:', error);
+      return false;
     }
-  },
-  removeItem: (key: string) => {
+  };
+
+  const removeItem = async (key: string) => {
     try {
-      localStorage.removeItem(key);
-    } catch (e) {
-      // Ignorar errores
+      window.localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar datos:', error);
+      return false;
     }
-  }
+  };
+
+  return { getItem, setItem, removeItem };
 };
+
+export default useStorage;

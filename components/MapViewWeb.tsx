@@ -74,20 +74,46 @@ export const OptimizedMapView = ({
   initialRegion, 
   style, 
   onMapError,
+  onPress,
   ...rest 
 }) => {
   const [mapError, setMapError] = React.useState(false);
+  const [mapLoaded, setMapLoaded] = React.useState(false);
 
   React.useEffect(() => {
     // Timeout to verify map loading
     const timeout = setTimeout(() => {
-      if (!mapError && onMapError) {
-        onMapError('Map timeout');
+      if (!mapLoaded) {
+        setMapError(true);
+        if (onMapError) {
+          onMapError('Map timeout');
+        }
       }
     }, 10000);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [mapLoaded, onMapError]);
+  
+  // Manejar el evento onPress para cuando es web
+  const handleMapPress = (e) => {
+    if (onPress) {
+      // Formatear el evento para que sea similar al de react-native-maps
+      const coordinate = {
+        latitude: e.nativeEvent.coordinate?.latitude || 19.4326,
+        longitude: e.nativeEvent.coordinate?.longitude || -99.1332,
+      };
+      
+      // Si no hay coordinate (como en web), intentar obtener del click
+      if (!e.nativeEvent.coordinate && e.nativeEvent.latLng) {
+        coordinate.latitude = e.nativeEvent.latLng.lat();
+        coordinate.longitude = e.nativeEvent.latLng.lng();
+      }
+      
+      onPress({
+        nativeEvent: { coordinate }
+      });
+    }
+  };
 
   if (mapError) {
     return (
@@ -113,6 +139,8 @@ export const OptimizedMapView = ({
         setMapError(true);
         if (onMapError) onMapError(e);
       }}
+      onMapReady={() => setMapLoaded(true)}
+      onPress={handleMapPress}
       {...rest}
     >
       {children}

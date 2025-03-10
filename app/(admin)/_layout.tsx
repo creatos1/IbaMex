@@ -1,53 +1,78 @@
-import React, { useEffect } from 'react';
-import { Stack, useRouter } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
+import React from 'react';
+import { Tabs } from 'expo-router';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ThemedText } from '@/components/ThemedText';
 
 export default function AdminLayout() {
-  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const tintColor = useThemeColor({ light: '#0a7ea4', dark: '#fff' }, 'tint');
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#151718' }, 'background');
-
-  // Verificar si el usuario tiene permisos de administrador
-  useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'admin')) {
-      // Redireccionar si no es administrador
-      router.replace('/');
-    }
-  }, [user, isLoading, router]);
-
-  if (isLoading) {
-    return null; // Muestra un spinner o pantalla de carga
-  }
-
-  // Solo renderizar el contenido si es administrador
-  if (user?.role === 'admin') {
-    return (
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor,
-          },
-          headerTintColor: useThemeColor({ light: '#000', dark: '#fff' }, 'text'),
+  const tabIconDefault = useThemeColor({ light: '#687076', dark: '#9BA1A6' }, 'tabIconDefault');
+  
+  // Función para cerrar sesión
+  const handleLogout = () => {
+    router.replace('/');
+  };
+  
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: tintColor,
+        tabBarInactiveTintColor: tabIconDefault,
+        tabBarStyle: {
+          backgroundColor: backgroundColor,
+        },
+        headerStyle: {
+          backgroundColor: '#87CEEB',
+        },
+        headerTintColor: tintColor,
+        headerRight: () => (
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <ThemedText style={styles.logoutText}>Cerrar Sesión</ThemedText>
+          </TouchableOpacity>
+        ),
+      }}>
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
         }}
-      >
-        <Stack.Screen 
-          name="index" 
-          options={{ 
-            title: 'Panel de Administración',
-            headerLargeTitle: true, 
-          }} 
-        />
-        <Stack.Screen 
-          name="users" 
-          options={{ 
-            title: 'Gestión de Usuarios',
-            presentation: 'card',
-          }} 
-        />
-      </Stack>
-    );
-  }
-
-  return null;
+      />
+      <Tabs.Screen
+        name="routes"
+        options={{
+          title: 'Gestión de Rutas',
+          tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'Analítica',
+          tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} />,
+        }}
+      />
+    </Tabs>
+  );
 }
+
+const styles = StyleSheet.create({
+  logoutButton: {
+    backgroundColor: '#FF5733', // Color contrastante con azul cielo
+    borderRadius: 10,
+    padding: 8,
+    marginRight: 10,
+  },
+  logoutText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+});
