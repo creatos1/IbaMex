@@ -8,8 +8,19 @@ class OccupancyLogModel {
 
   async create(logData) {
     try {
-      const request = this.sql.request()
-        .input('busId', sql.Int, logData.busId)
+      // Determine the SQL request object
+      let request;
+      const sql = this.sql.constructor.name === 'ConnectionPool' ? this.sql : require('mssql');
+      
+      if (typeof this.sql.request === 'function') {
+        request = this.sql.request();
+      } else if (this.sql.Request) {
+        request = new this.sql.Request();
+      } else {
+        request = this.sql;
+      }
+      
+      request.input('busId', sql.Int, logData.busId)
         .input('passengerCount', sql.Int, logData.passengerCount);
       
       let query = `
@@ -167,8 +178,9 @@ class OccupancyLogModel {
 
   async deleteByBusId(busId) {
     try {
-      const result = await this.sql.request()
-        .input('busId', sql.Int, busId)
+      const request = new this.sql.Request();
+      const result = await request
+        .input('busId', this.sql.Int, busId)
         .query('DELETE FROM OccupancyLogs WHERE busId = @busId');
       
       return result.rowsAffected[0];
@@ -183,8 +195,9 @@ class OccupancyLogModel {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
       
-      const result = await this.sql.request()
-        .input('cutoffDate', sql.DateTime, cutoffDate)
+      const request = new this.sql.Request();
+      const result = await request
+        .input('cutoffDate', this.sql.DateTime, cutoffDate)
         .query('DELETE FROM OccupancyLogs WHERE timestamp < @cutoffDate');
       
       return result.rowsAffected[0];

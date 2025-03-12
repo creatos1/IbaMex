@@ -14,10 +14,10 @@ const parseConnectionString = (connectionString) => {
     
     // Si no, construir configuración manual
     return {
-      user: process.env.DB_USER || '',
-      password: process.env.DB_PASSWORD || '',
-      server: process.env.DB_SERVER || '-',
-      database: process.env.DB_NAME || '',
+      user: process.env.DB_USER || 'sa',
+      password: process.env.DB_PASSWORD || 'creatos1',
+      server: process.env.DB_SERVER || 'DESKTOP-G2I28UV',
+      database: process.env.DB_NAME || 'utasoft',
       options: {
         encrypt: process.env.NODE_ENV === 'production', // Usar encriptación en producción
         trustServerCertificate: true, // Confiar en certificado para desarrollo local

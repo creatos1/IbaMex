@@ -1,103 +1,127 @@
 
 import { useState, useEffect } from 'react';
-import * as Mqtt from 'react-native-mqtt';
+import { Client, Message } from 'paho-mqtt';
 
-// Configurar MQTT
-Mqtt.setDefaultHost('broker.emqx.io');
-Mqtt.setDefaultPort(1883);
-
-interface MqttConnectionOptions {
-  host?: string;
-  port?: number;
-  clientId: string;
-  topics: string[];
-}
-
-export const useMqttConnection = (options: MqttConnectionOptions) => {
-  const [client, setClient] = useState<any>(null);
+// MqttService hook
+export const useMqttConnection = () => {
+  const [client, setClient] = useState<Client | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [messages, setMessages] = useState<{[topic: string]: any}>({});
-  const [error, setError] = useState<string | null>(null);
+  const [lastMessage, setLastMessage] = useState<{topic: string, message: any} | null>(null);
 
   useEffect(() => {
-    // Configurar cliente MQTT
-    const mqttClient = new Mqtt.Client(
-      options.host || 'broker.emqx.io', 
-      options.port || 1883, 
-      options.clientId
-    );
+    // Create client ID with random string
+    const clientId = 'ibamex_mobile_' + Math.random().toString(16).substring(2, 8);
     
-    // Configurar callbacks
-    mqttClient.on('connect', () => {
-      console.log('MQTT conectado!');
-      setIsConnected(true);
-      setError(null);
-      
-      // Suscribirse a tópicos
-      options.topics.forEach(topic => {
-        mqttClient.subscribe(topic, 0);
-        console.log(`Suscrito a ${topic}`);
-      });
-    });
-    
-    mqttClient.on('message', (topic, payload) => {
-      try {
-        const msg = payload.toString();
-        console.log(`Mensaje recibido en ${topic}: ${msg}`);
-        
+    try {
+      // Connect using WebSocket (works with React Native)
+      const mqttClient = new Client(
+        'broker.emqx.io', // Broker host
+        8083,            // WebSocket port for non-SSL
+        '/mqtt',         // Path
+        clientId         // Client ID
+      );
+
+      // Set callbacks
+      mqttClient.onConnectionLost = (responseObject) => {
+        console.log('Connection lost:', responseObject.errorMessage);
+        setIsConnected(false);
+      };
+
+      mqttClient.onMessageArrived = (message: Message) => {
+        console.log('Message received:', message.destinationName, message.payloadString);
         try {
-          const jsonData = JSON.parse(msg);
-          setMessages(prev => ({ ...prev, [topic]: jsonData }));
+          const payload = JSON.parse(message.payloadString);
+          setLastMessage({
+            topic: message.destinationName,
+            message: payload
+          });
         } catch (e) {
-          setMessages(prev => ({ ...prev, [topic]: msg }));
+          console.error('Error parsing MQTT message:', e);
         }
-      } catch (e) {
-        console.error('Error al procesar mensaje MQTT:', e);
-      }
-    });
-    
-    mqttClient.on('error', (err) => {
-      console.error('Error MQTT:', err);
-      setError(`Error MQTT: ${err.message}`);
-    });
-    
-    mqttClient.on('close', () => {
-      console.log('Conexión MQTT cerrada');
-      setIsConnected(false);
-    });
-    
-    // Conectar
-    mqttClient.connect();
-    setClient(mqttClient);
-    
-    // Limpieza al desmontar
-    return () => {
-      if (mqttClient && mqttClient.isConnected()) {
-        options.topics.forEach(topic => mqttClient.unsubscribe(topic));
-        mqttClient.disconnect();
-      }
-    };
-  }, [options.host, options.port, options.clientId, JSON.stringify(options.topics)]);
-  
-  // Función para publicar mensajes
-  const publish = (topic: string, message: any) => {
+      };
+
+      // Connect with timeout and retry logic
+      const connectWithRetry = (retries = 3) => {
+        try {
+          mqttClient.connect({
+            useSSL: false, // Change to false for non-SSL connection
+            timeout: 10, // Shorter timeout
+            onSuccess: () => {
+              console.log('MQTT Connected successfully');
+              setIsConnected(true);
+              
+              // Subscribe to topics
+              try {
+                mqttClient.subscribe('buses/+/count');
+                console.log('Subscribed to topic: buses/+/count');
+              } catch (subError) {
+                console.error('Error subscribing to topic:', subError);
+              }
+            },
+            onFailure: (err) => {
+              console.error('MQTT Connection failed:', err.errorMessage);
+              if (retries > 0) {
+                console.log(`Retrying connection... (${retries} attempts left)`);
+                setTimeout(() => connectWithRetry(retries - 1), 3000);
+              } else {
+                console.error('Max retries reached, could not connect to MQTT broker');
+                setIsConnected(false);
+                
+                // Activate simulation mode here if needed
+                console.log('Activating simulation mode');
+              }
+            }
+          });
+        } catch (error) {
+          console.error('Error during MQTT connection attempt:', error);
+          setIsConnected(false);
+        }
+      };
+
+      // Start connection process
+      connectWithRetry();
+      setClient(mqttClient);
+
+      // Cleanup on unmount
+      return () => {
+        if (mqttClient) {
+          try {
+            if (mqttClient.isConnected()) {
+              mqttClient.disconnect();
+            }
+            console.log('MQTT client disconnected');
+          } catch (e) {
+            console.error('Error disconnecting MQTT client:', e);
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error setting up MQTT client:', error);
+    }
+  }, []);
+
+  const publishMessage = (topic: string, message: any) => {
     if (!client || !isConnected) {
-      console.error('No se puede publicar: cliente no conectado');
+      console.warn('Cannot publish: MQTT client not connected');
       return false;
     }
     
     try {
-      const payload = typeof message === 'object' 
-        ? JSON.stringify(message)
-        : message.toString();
-        
-      client.publish(topic, payload, 0, false);
+      const payload = JSON.stringify(message);
+      const mqttMessage = new Message(payload);
+      mqttMessage.destinationName = topic;
+      client.send(mqttMessage);
+      console.log(`Published message to ${topic}:`, payload);
       return true;
-    } catch (e) {
-      console.error('Error al publicar:', e);
+    } catch (error) {
+      console.error('Error publishing MQTT message:', error);
       return false;
     }
   };
-  
-  return { isConnected, messages, error, publish };
+
+  return {
+    isConnected,
+    lastMessage,
+    publishMessage
+  };
 };

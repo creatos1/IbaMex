@@ -70,22 +70,38 @@ router.post('/login', getUserModel, async (req, res) => {
       return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
     }
     
-    // Buscar el usuario
+    // Prevenir timing attacks usando tiempo constante para verificar
+    // independientemente de si el usuario existe o no
     const user = await req.userModel.findByUsername(username);
-    if (!user) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
     
-    // Verificar si el usuario está activo
-    if (!user.active) {
-      return res.status(401).json({ message: 'Esta cuenta está desactivada' });
+    // Variable para registrar evento de seguridad
+    const loginAttempt = {
+      username,
+      timestamp: new Date(),
+      success: false,
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown'
+    };
+    
+    // Para prevenir ataques de reconocimiento de usuario,
+    // siempre retornamos el mismo mensaje de error
+    if (!user || !user.active) {
+      console.log('Intento de inicio de sesión fallido:', loginAttempt);
+      // Usar un tiempo constante para evitar timing attacks
+      await bcrypt.compare(password, '$2b$10$invalidhashfortimingattacks');
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
     
     // Verificar contraseña
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log('Contraseña incorrecta:', loginAttempt);
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
+    
+    // Actualizar registro de evento de seguridad
+    loginAttempt.success = true;
+    console.log('Inicio de sesión exitoso:', loginAttempt);
     
     // Si el usuario tiene MFA activado, devolver un token temporal y requerir verificación MFA
     if (user.mfaEnabled) {
