@@ -1,4 +1,3 @@
-
 # UTASOFT Server
 
 Backend para la aplicación de monitoreo de buses UTASOFT.
@@ -17,42 +16,61 @@ cd server
 npm install
 ```
 
+1.5
+instalar base de datos con el query de /scripts/create-database
+
+1.6
+añadir la ipv4 de la pc (ipconfig en la terminal) en la línea 31 del archivo server.js 'http://TUIPV4','http://TUIPV4:3000',
+
+1.7
+
+```
 2. Configurar variables de entorno:
 
 Crear un archivo `.env` en la carpeta `server` con el siguiente contenido:
 
 ```
+
 # Servidor
+
 PORT=3000
 NODE_ENV=development
 
 # Base de datos
+
 DB_USER=USUARIO
 DB_PASSWORD=CONTRASEÑA DE LA BDD
 DB_SERVER=NOMBRE DEL SERVER
 DB_NAME=DB NOMBRE
 
 # JWT
+
 JWT_SECRET=your-secret-key-change-this
 
 # MQTT (opcional)
+
 MQTT_HOST=broker.emqx.io
 MQTT_PORT=1883
 MQTT_PROTOCOL=mqtt
 MQTT_USERNAME=
 MQTT_PASSWORD=
+
 ```
 
 ## Ejecución
 
 ```
+
 npm start
+
 ```
 
 Para desarrollo:
 
 ```
+
 npm run dev
+
 ```
 
 ## API Endpoints
@@ -112,3 +130,4 @@ El script `scripts/create-database.sql` crea las siguientes tablas:
 - Opcional: MFA (Multi-Factor Authentication)
 - Protección contra XSS con helmet
 - Rate limiting para prevenir ataques de fuerza bruta
+```
