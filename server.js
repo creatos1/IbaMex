@@ -6,7 +6,30 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
-
+const os = require('os');
+const getLocalIP = () => {
+  const interfaces = os.networkInterfaces();
+  for (const interfaceName in interfaces) {
+    const interface = interfaces[interfaceName];
+    for (const config of interface) {
+      if (config.family === 'IPv4' && !config.internal) {
+        return config.address;
+      }
+    }
+  }
+  return 'localhost';
+};
+const generateDynamicOrigins = () => {
+  const ip = getLocalIP();
+  return [
+    `http://${ip}`,
+    `http://${ip}:3000`,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'exp://localhost:19000',
+    `exp://${ip}:19000`
+  ];
+};
 // Importar módulo de conexión centralizado
 const connectDB = require('./config/db');
 
@@ -28,7 +51,14 @@ const startServer = async () => {
 
     // Configuración CORS ampliada para desarrollo
     app.use(cors({
-      origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.2.3.157:3000', 'http://localhost:19006', 'exp://localhost:19000', 'exp://127.0.0.1:19000', 'exp://10.2.3.157:19000', 'http://10.0.2.2:3000', 'http://10.0.2.2:19000', 'http://10.0.2.2:19006', 'http://192.168.100.13',  'http://192.168.100.13:3000','http://10.2.3.97','http://10.2.3.97:3000','*'],
+      origin: (origin, callback) => {
+        const allowedOrigins = generateDynamicOrigins();
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Origen no permitido por CORS'));
+        }
+      },
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true

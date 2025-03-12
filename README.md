@@ -20,8 +20,7 @@ npm install
 instalar base de datos con el query de /scripts/create-database
 
 1.6
-añadir la ipv4 de la pc (ipconfig en la terminal) en la línea 31 del archivo server.js 'http://TUIPV4','http://TUIPV4:3000',
-
+YA ESTA LA FUNCION DE AUTODETECTAR LA IP, NO ES NECESARIO AÑADIR IP
 1.7
 
 ```
