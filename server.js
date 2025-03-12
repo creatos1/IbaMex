@@ -32,6 +32,7 @@ const generateDynamicOrigins = () => {
 };
 // Importar módulo de conexión centralizado
 const connectDB = require('./config/db');
+const MqttService = require('./services/mqttService');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -41,6 +42,14 @@ const startServer = async () => {
   try {
     // Conectar a SQL Server usando el módulo centralizado
     const sql = await connectDB();
+    
+    // Inicializar servicio MQTT
+    const mqttService = new MqttService(sql);
+    try {
+      await mqttService.connect();
+    } catch (mqttError) {
+      console.warn('No se pudo conectar a MQTT:', mqttError.message);
+    }
 
     const app = express();
     const PORT = process.env.PORT || 3000;

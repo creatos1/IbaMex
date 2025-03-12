@@ -1,25 +1,20 @@
-import { StyleSheet, View } from 'react-native';
-import Layout from './src/components/Layout';
-import Section from './src/components/Section';
+
+import React from 'react';
+import { StyleSheet, StatusBar, SafeAreaView } from 'react-native';
+import PassengerCounterScreen from './src/screens/PassengerCounterScreen';
 
 export default function App() {
   return (
-    <Layout>
-      <Section 
-        title="Sección 1" 
-        content="Contenido de la primera sección" 
-      />
-      <Section 
-        title="Sección 2" 
-        content="Contenido de la segunda sección" 
-      />
-    </Layout>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F5F5" />
+      <PassengerCounterScreen />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F5F5',
   },
 });
