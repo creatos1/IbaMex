@@ -1,4 +1,3 @@
-
 -- Crear base de datos
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'utasoft')
 BEGIN
@@ -129,3 +128,42 @@ ELSE
 BEGIN
     PRINT 'Usuario admin ya existe.'
 END
+
+-- Crear tabla VerificationCodes
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VerificationCodes]') AND type = 'U')
+BEGIN
+    CREATE TABLE [dbo].[VerificationCodes](
+        [id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [email] NVARCHAR(255) NOT NULL,
+        [code] NVARCHAR(6) NOT NULL,
+        [createdAt] DATETIME NOT NULL DEFAULT GETDATE()
+    );
+    PRINT 'Tabla VerificationCodes creada.'
+END
+ELSE
+BEGIN
+    PRINT 'Tabla VerificationCodes ya existe.'
+END
+
+-- Crear índices para la tabla VerificationCodes
+CREATE INDEX idx_email ON [dbo].[VerificationCodes] (email);
+CREATE INDEX idx_created_at ON [dbo].[VerificationCodes] (createdAt);
+
+-- Crear procedimiento almacenado para limpiar códigos expirados
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CleanupExpiredCodes]') AND type = 'P')
+BEGIN
+    EXEC('
+    CREATE PROCEDURE CleanupExpiredCodes
+    AS
+    BEGIN
+        DELETE FROM [dbo].[VerificationCodes] 
+        WHERE createdAt < DATEADD(MINUTE, -10, GETDATE());
+    END;
+    ');
+    PRINT 'Procedimiento CleanupExpiredCodes creado.'
+END
+ELSE
+BEGIN
+    PRINT 'Procedimiento CleanupExpiredCodes ya existe.'
+END
+GO

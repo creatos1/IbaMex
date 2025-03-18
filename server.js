@@ -23,9 +23,9 @@ const generateDynamicOrigins = () => {
   const ip = getLocalIP();
   return [
     `http://${ip}`,
-    `http://${ip}:3000`,
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    `http://${ip}:4000`,
+    'http://localhost:4000',
+    'http://127.0.0.1:4000',
     'exp://localhost:19000',
     `exp://${ip}:19000`
   ];
@@ -52,7 +52,7 @@ const startServer = async () => {
     }
 
     const app = express();
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 4000;
 
     // Middleware de seguridad y rendimiento
     app.use(helmet());
