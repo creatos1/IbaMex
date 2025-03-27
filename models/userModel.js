@@ -201,6 +201,18 @@ class UserModel {
     }
     return await sql.connect(this.sql);
   }
+
+  async findDrivers() {
+    try {
+      const pool = await this.getPool();
+      const result = await pool.request()
+        .query('SELECT id, username, email, fullName, active FROM Users WHERE role = \'driver\'');
+      return result.recordset;
+    } catch (error) {
+      console.error('Error finding drivers:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = UserModel;

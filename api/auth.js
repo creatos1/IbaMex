@@ -24,12 +24,18 @@ const getModels = (req, res, next) => {
 // Envío de código de verificación
 router.post('/request-code', getModels, async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
 
     // Verificar si el email existe
     const user = await req.userModel.findByEmail(email);
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Verificar contraseña
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Contraseña incorrecta' });
     }
 
     // Generar código de verificación
@@ -46,34 +52,21 @@ router.post('/request-code', getModels, async (req, res) => {
         message: 'Código de verificación enviado'
       });
     } catch (error) {
-      console.error('Error sending email:', error);
       return res.status(500).json({
         message: 'Error al enviar código de verificación',
         error: error.message
       });
     }
   } catch (error) {
-    console.error('Error in code request:', error);
     res.status(500).json({ message: 'Error del servidor', error: error.message });
+    console.log(error)
   }
 });
 
 // Verificar código
 router.post('/verify-code', getModels, async (req, res) => {
   try {
-    const { email, code, password } = req.body;
-
-    // Encontrar usuario
-    const user = await req.userModel.findByEmail(email);
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    // Verificar contraseña
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Contraseña incorrecta' });
-    }
+    const { email, code } = req.body;
 
     // Encontrar código de verificación
     const verification = await req.verificationModel.findByEmailAndCode(email, code);
@@ -84,14 +77,8 @@ router.post('/verify-code', getModels, async (req, res) => {
     // Eliminar códigos anteriores
     await req.verificationModel.deleteByEmail(email);
 
-    return res.status(200).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role
-      }
-    });
+    return res.status(200).json({ message: 'Código verificado con éxito',});
+
   } catch (error) {
     console.error('Error in code verification:', error);
     return res.status(500).json({ message: 'Error del servidor', error: error.message });
@@ -140,14 +127,14 @@ router.post('/register', getUserModel, async (req, res) => {
       email,
       password: hashedPassword,
       fullName: fullName || username,
-      role: 'user',
+      role: 'admin',
       mfaEnabled: false,
       active: true
     });
     
     // Generar token JWT
     const token = jwt.sign(
-      { id: userId, username, role: 'user' },
+      { id: userId, username },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
@@ -155,7 +142,7 @@ router.post('/register', getUserModel, async (req, res) => {
     return res.status(201).json({
       message: 'Usuario registrado con éxito',
       username,
-      role: 'user',
+      role: 'admin',
       token
     });
 
@@ -169,11 +156,6 @@ router.post('/register', getUserModel, async (req, res) => {
 router.post('/login', getUserModel, async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validar datos
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email y contraseña son requeridos' });
-    }
 
     // Prevenir timing attacks usando tiempo constante para verificar
     // independientemente de si el usuario existe o no
@@ -353,6 +335,83 @@ router.get('/users', [authenticateJWT, getUserModel], async (req, res) => {
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
     return res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
+});
+
+// -------- DRIVER RUTAS -------------------------
+
+// Obteniendo lista de drivers
+router.get('/drivers', [authenticateJWT, getUserModel], async (req, res) => {
+  try {
+    const drivers = await req.userModel.findDrivers();
+    return res.json(drivers);
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Crear driver
+router.post('/drivers', [authenticateJWT, getUserModel], async (req, res) => {
+  try {
+    const { username, email, password, fullName } = req.body;
+    
+    const existingUser = await req.userModel.findByUsername(username);
+    if (existingUser) {
+      return res.status(400).json({ message: 'El usuario ya existe' });
+    }
+    
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    const userId = await req.userModel.create({
+      username,
+      email,
+      password: hashedPassword,
+      fullName,
+      role: 'driver',
+      mfaEnabled: false,
+      active: true
+    });
+    
+    return res.status(201).json({ message: 'Driver creado', id: userId });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Actualizar driver
+router.put('/drivers/:id', [authenticateJWT, getUserModel], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, email, active, username, password } = req.body;
+
+    const updateData = {};
+    if (fullName) updateData.fullName = fullName;
+    if (email) updateData.email = email;
+    if (active !== undefined) updateData.active = active;
+    if (username) updateData.username = username;
+
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      updateData.password = hashedPassword;
+    }
+
+    await req.userModel.update(id, updateData);
+    return res.json({ message: 'Driver actualizado' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Borra driver
+router.delete('/drivers/:id', [authenticateJWT, getUserModel], async (req, res) => {
+  try {
+    const { id } = req.params;
+    await req.userModel.delete(id);
+    return res.json({ message: 'Driver eliminado' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
