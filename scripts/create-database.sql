@@ -1,3 +1,4 @@
+
 -- Crear base de datos
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'utasoft')
 BEGIN
@@ -7,6 +8,28 @@ GO
 
 USE utasoft;
 GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type = 'U')
+BEGIN
+    CREATE TABLE [dbo].[Users](
+        [id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [username] VARCHAR(50) NOT NULL UNIQUE,
+        [password] VARCHAR(255) NOT NULL,
+        [email] VARCHAR(100) NULL UNIQUE,
+        [fullName] VARCHAR(100) NULL,
+        [role] VARCHAR(20) NOT NULL DEFAULT 'user',
+        [active] BIT NOT NULL DEFAULT 1,
+        [mfaSecret] VARCHAR(255) NULL,
+        [mfaEnabled] BIT NOT NULL DEFAULT 0,
+        [createdAt] DATETIME NOT NULL DEFAULT GETDATE(),
+        [updatedAt] DATETIME NOT NULL DEFAULT GETDATE()
+    );
+    PRINT 'Tabla Users creada.'
+END
+ELSE
+BEGIN
+    PRINT 'Tabla Users ya existe.'
+END
 
 -- Tabla de Rutas
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Routes]') AND type = 'U')
@@ -54,7 +77,6 @@ BEGIN
         [id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         [busId] VARCHAR(50) NOT NULL UNIQUE,
         [routeId] INT NULL,
-        [driverId] INT NULL,
         [licensePlate] VARCHAR(20) NOT NULL,
         [model] VARCHAR(50) NULL,
         [capacity] INT NOT NULL DEFAULT 0,
@@ -74,27 +96,25 @@ BEGIN
     PRINT 'Tabla Buses ya existe.'
 END
 
--- Tabla de Usuarios
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type = 'U')
+-- Tabla de Asignaciones Conductor-Bus
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[DriverBusAssignments]') AND type = 'U')
 BEGIN
-    CREATE TABLE [dbo].[Users](
+    CREATE TABLE [dbo].[DriverBusAssignments](
         [id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-        [username] VARCHAR(50) NOT NULL UNIQUE,
-        [password] VARCHAR(255) NOT NULL,
-        [email] VARCHAR(100) NULL UNIQUE,
-        [fullName] VARCHAR(100) NULL,
-        [role] VARCHAR(20) NOT NULL DEFAULT 'user',
+        [driverId] INT NOT NULL,
+        [busId] INT NOT NULL,
+        [assignedAt] DATETIME NOT NULL DEFAULT GETDATE(),
         [active] BIT NOT NULL DEFAULT 1,
-        [mfaSecret] VARCHAR(255) NULL,
-        [mfaEnabled] BIT NOT NULL DEFAULT 0,
-        [createdAt] DATETIME NOT NULL DEFAULT GETDATE(),
-        [updatedAt] DATETIME NOT NULL DEFAULT GETDATE()
+        CONSTRAINT [FK_DriverBusAssignments_Users] FOREIGN KEY([driverId]) REFERENCES [dbo].[Users]([id]),
+        CONSTRAINT [FK_DriverBusAssignments_Buses] FOREIGN KEY([busId]) REFERENCES [dbo].[Buses]([id])
     );
-    PRINT 'Tabla Users creada.'
+    CREATE INDEX [IX_DriverBusAssignments_DriverId] ON [dbo].[DriverBusAssignments]([driverId]);
+    CREATE INDEX [IX_DriverBusAssignments_BusId] ON [dbo].[DriverBusAssignments]([busId]);
+    PRINT 'Tabla DriverBusAssignments creada.'
 END
 ELSE
 BEGIN
-    PRINT 'Tabla Users ya existe.'
+    PRINT 'Tabla DriverBusAssignments ya existe.'
 END
 
 -- Tabla de Logs de Ocupación
@@ -117,18 +137,6 @@ BEGIN
     PRINT 'Tabla OccupancyLogs ya existe.'
 END
 
--- Insertar usuario administrador por defecto si no existe
-IF NOT EXISTS (SELECT * FROM [dbo].[Users] WHERE [username] = 'admin')
-BEGIN
-    INSERT INTO [dbo].[Users] ([username], [password], [email], [fullName], [role])
-    VALUES ('admin', '$2b$10$x5S5FNQ9wLBBbF.KPiR/7.GTG/Ko8kgXjGTAEWOpyAtUJA7RN5ad6', 'admin@ibamex.com', 'Administrador', 'admin')
-    PRINT 'Usuario admin creado con contraseña: password123'
-END
-ELSE
-BEGIN
-    PRINT 'Usuario admin ya existe.'
-END
-
 -- Crear tabla VerificationCodes
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VerificationCodes]') AND type = 'U')
 BEGIN
@@ -143,6 +151,18 @@ END
 ELSE
 BEGIN
     PRINT 'Tabla VerificationCodes ya existe.'
+END
+
+-- Insertar usuario administrador por defecto si no existe
+IF NOT EXISTS (SELECT * FROM [dbo].[Users] WHERE [username] = 'admin')
+BEGIN
+    INSERT INTO [dbo].[Users] ([username], [password], [email], [fullName], [role])
+    VALUES ('admin', '$2b$10$x5S5FNQ9wLBBbF.KPiR/7.GTG/Ko8kgXjGTAEWOpyAtUJA7RN5ad6', 'admin@ibamex.com', 'Administrador', 'admin')
+    PRINT 'Usuario admin creado con contraseña: password123'
+END
+ELSE
+BEGIN
+    PRINT 'Usuario admin ya existe.'
 END
 
 -- Crear índices para la tabla VerificationCodes

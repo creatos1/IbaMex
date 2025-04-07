@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const BusModel = require('../models/busModel');
@@ -19,20 +18,18 @@ const getModels = (req, res, next) => {
 router.get('/', [authenticateJWT, getModels], async (req, res) => {
   try {
     const { routeId, driverId, status, active, search } = req.query;
-    
-    // Construir filtro
+
     const filter = {};
     if (routeId) filter.routeId = parseInt(routeId, 10);
     if (driverId) filter.driverId = parseInt(driverId, 10);
     if (status) filter.status = status;
     if (active !== undefined) filter.active = active === 'true';
     if (search) filter.searchTerm = search;
-    
-    // Si el usuario es conductor, solo mostrar sus buses asignados
+
     if (req.user.role === 'driver') {
       filter.driverId = req.user.id;
     }
-    
+
     const buses = await req.busModel.findAll(filter);
     res.json(buses);
   } catch (error) {
@@ -46,16 +43,15 @@ router.get('/:id', [authenticateJWT, getModels], async (req, res) => {
   try {
     const busId = parseInt(req.params.id, 10);
     const bus = await req.busModel.findById(busId);
-    
+
     if (!bus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Si es conductor, verificar que sea su bus asignado
+
     if (req.user.role === 'driver' && bus.driverId !== req.user.id) {
       return res.status(403).json({ message: 'No tienes permiso para ver este bus' });
     }
-    
+
     res.json(bus);
   } catch (error) {
     console.error('Error al obtener bus:', error);
@@ -67,13 +63,11 @@ router.get('/:id', [authenticateJWT, getModels], async (req, res) => {
 router.post('/', [authenticateJWT, isAdmin, getModels], async (req, res) => {
   try {
     const { busId, routeId, driverId, licensePlate, model, capacity, status } = req.body;
-    
-    // Validación básica
+
     if (!busId || !licensePlate) {
       return res.status(400).json({ message: 'ID de bus y placa son requeridos' });
     }
-    
-    // Crear bus
+
     const newBusId = await req.busModel.create({
       busId,
       routeId: routeId || null,
@@ -84,7 +78,7 @@ router.post('/', [authenticateJWT, isAdmin, getModels], async (req, res) => {
       status: status || 'inactive',
       active: true
     });
-    
+
     res.status(201).json({ 
       message: 'Bus creado exitosamente',
       id: newBusId
@@ -95,19 +89,57 @@ router.post('/', [authenticateJWT, isAdmin, getModels], async (req, res) => {
   }
 });
 
+// Asignar conductor a bus
+router.post('/assign', [authenticateJWT, isAdmin], async (req, res) => {
+  try {
+    const { driverId, busId } = req.body;
+
+    if (!driverId || !busId) {
+      return res.status(400).json({ message: 'Se requiere driverId y busId' });
+    }
+
+    const busModel = new BusModel(req.app.locals.sql);
+    const result = await busModel.assignDriver(busId, driverId);
+
+    if (result) {
+      res.json({ message: 'Asignación exitosa' });
+    } else {
+      res.status(400).json({ message: 'Error en la asignación' });
+    }
+  } catch (error) {
+    console.error('Error en la asignación:', error);
+    res.status(500).json({ message: 'Error del servidor', error: error.message });
+  }
+});
+
+// Eliminar asignación de conductor
+router.post('/:id/unassign', [authenticateJWT, isAdmin, getModels], async (req, res) => {
+  try {
+    const busId = parseInt(req.params.id, 10);
+    const result = await req.busModel.unassign(busId);
+
+    if (result) {
+      res.json({ message: 'Asignación eliminada exitosamente' });
+    } else {
+      res.status(400).json({ message: 'Error al eliminar la asignación' });
+    }
+  } catch (error) {
+    console.error('Error al eliminar asignación:', error);
+    res.status(500).json({ message: 'Error al eliminar asignación', error: error.message });
+  }
+});
+
 // Actualizar bus (solo admin)
 router.put('/:id', [authenticateJWT, isAdmin, getModels], async (req, res) => {
   try {
     const busId = parseInt(req.params.id, 10);
     const { busId: newBusId, routeId, driverId, licensePlate, model, capacity, status, active } = req.body;
-    
-    // Verificar que el bus exista
+
     const existingBus = await req.busModel.findById(busId);
     if (!existingBus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Actualizar bus
+
     const updated = await req.busModel.update(busId, {
       busId: newBusId,
       routeId,
@@ -118,11 +150,11 @@ router.put('/:id', [authenticateJWT, isAdmin, getModels], async (req, res) => {
       status,
       active
     });
-    
+
     if (!updated) {
       return res.status(400).json({ message: 'No se pudo actualizar el bus' });
     }
-    
+
     res.json({ message: 'Bus actualizado exitosamente' });
   } catch (error) {
     console.error('Error al actualizar bus:', error);
@@ -134,20 +166,18 @@ router.put('/:id', [authenticateJWT, isAdmin, getModels], async (req, res) => {
 router.delete('/:id', [authenticateJWT, isAdmin, getModels], async (req, res) => {
   try {
     const busId = parseInt(req.params.id, 10);
-    
-    // Verificar que el bus exista
+
     const existingBus = await req.busModel.findById(busId);
     if (!existingBus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Eliminar bus
+
     const deleted = await req.busModel.delete(busId);
-    
+
     if (!deleted) {
       return res.status(400).json({ message: 'No se pudo eliminar el bus' });
     }
-    
+
     res.json({ message: 'Bus eliminado exitosamente' });
   } catch (error) {
     console.error('Error al eliminar bus:', error);
@@ -160,26 +190,22 @@ router.put('/:id/passenger-count', [authenticateJWT, isAdminOrDriver, getModels]
   try {
     const busId = parseInt(req.params.id, 10);
     const { count, latitude, longitude } = req.body;
-    
+
     if (count === undefined) {
       return res.status(400).json({ message: 'Contador de pasajeros requerido' });
     }
-    
-    // Verificar que el bus exista
+
     const existingBus = await req.busModel.findById(busId);
     if (!existingBus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Si es conductor, verificar que sea su bus asignado
+
     if (req.user.role === 'driver' && existingBus.driverId !== req.user.id) {
       return res.status(403).json({ message: 'No tienes permiso para actualizar este bus' });
     }
-    
-    // Actualizar contador y registrar en log
+
     await req.busModel.updatePassengerCount(busId, count);
-    
-    // Si se proporcionan coordenadas, registrar ubicación
+
     if (latitude !== undefined && longitude !== undefined) {
       await req.logModel.create({
         busId,
@@ -193,7 +219,7 @@ router.put('/:id/passenger-count', [authenticateJWT, isAdminOrDriver, getModels]
         passengerCount: count
       });
     }
-    
+
     res.json({ 
       message: 'Contador actualizado exitosamente',
       count
@@ -209,25 +235,22 @@ router.get('/:id/occupancy-logs', [authenticateJWT, getModels], async (req, res)
   try {
     const busId = parseInt(req.params.id, 10);
     const { startDate, endDate, limit } = req.query;
-    
-    // Verificar que el bus exista
+
     const existingBus = await req.busModel.findById(busId);
     if (!existingBus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Si es conductor, verificar que sea su bus asignado
+
     if (req.user.role === 'driver' && existingBus.driverId !== req.user.id) {
       return res.status(403).json({ message: 'No tienes permiso para ver este bus' });
     }
-    
-    // Obtener logs
+
     const logs = await req.logModel.findByBusId(busId, {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined
     });
-    
+
     res.json(logs);
   } catch (error) {
     console.error('Error al obtener logs:', error);
@@ -240,25 +263,22 @@ router.get('/:id/occupancy-stats', [authenticateJWT, getModels], async (req, res
   try {
     const busId = parseInt(req.params.id, 10);
     const { startDate, endDate, limit } = req.query;
-    
-    // Verificar que el bus exista
+
     const existingBus = await req.busModel.findById(busId);
     if (!existingBus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Si es conductor, verificar que sea su bus asignado
+
     if (req.user.role === 'driver' && existingBus.driverId !== req.user.id) {
       return res.status(403).json({ message: 'No tienes permiso para ver este bus' });
     }
-    
-    // Obtener estadísticas
+
     const stats = await req.logModel.getStatsByBusId(busId, {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined
     });
-    
+
     res.json(stats);
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
@@ -270,22 +290,19 @@ router.get('/:id/occupancy-stats', [authenticateJWT, getModels], async (req, res
 router.get('/:id/hourly-stats/:date', [authenticateJWT, getModels], async (req, res) => {
   try {
     const busId = parseInt(req.params.id, 10);
-    const date = req.params.date; // Formato esperado: YYYY-MM-DD
-    
-    // Verificar que el bus exista
+    const date = req.params.date; 
+
     const existingBus = await req.busModel.findById(busId);
     if (!existingBus) {
       return res.status(404).json({ message: 'Bus no encontrado' });
     }
-    
-    // Si es conductor, verificar que sea su bus asignado
+
     if (req.user.role === 'driver' && existingBus.driverId !== req.user.id) {
       return res.status(403).json({ message: 'No tienes permiso para ver este bus' });
     }
-    
-    // Obtener estadísticas por hora
+
     const hourlyStats = await req.logModel.getHourlyStatsByBusId(busId, date);
-    
+
     res.json(hourlyStats);
   } catch (error) {
     console.error('Error al obtener estadísticas por hora:', error);
