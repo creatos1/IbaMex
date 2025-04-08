@@ -5,23 +5,17 @@ class BusModel {
     this.sql = connection;
   }
 
+  async getPool() {
+    if (this.sql.constructor.name === 'ConnectionPool') {
+      return this.sql;
+    }
+    return await sql.connect(this.sql);
+  }
+
   async create(busData) {
     try {
-      // Check if this.sql has request method directly or is a pool with request method
-      let request;
-      if (typeof this.sql.request === 'function') {
-        request = this.sql.request();
-      } else if (this.sql.Request) {
-        // If this.sql is a connection pool
-        request = new this.sql.Request();
-      } else {
-        // Direct use if it's already a request object
-        request = this.sql;
-      }
-
-      const sql = this.sql.constructor.name === 'ConnectionPool' ? this.sql : require('mssql');
-      
-      const result = await request
+      const pool = await this.getPool();
+      const result = await pool.request()
         .input('busId', sql.VarChar, busData.busId)
         .input('routeId', sql.Int, busData.routeId || null)
         .input('driverId', sql.Int, busData.driverId || null)
@@ -45,25 +39,17 @@ class BusModel {
 
   async findById(id) {
     try {
-      // Determine the SQL request object
-      let request;
-      const sql = this.sql.constructor.name === 'ConnectionPool' ? this.sql : require('mssql');
-      
-      if (typeof this.sql.request === 'function') {
-        request = this.sql.request();
-      } else if (this.sql.Request) {
-        request = new this.sql.Request();
-      } else {
-        request = this.sql;
-      }
-      
-      const result = await request
+      const pool = await this.getPool();
+      const result = await pool.request()
         .input('id', sql.Int, id)
         .query(`
-          SELECT b.*, r.name as routeName, u.username as driverUsername, u.fullName as driverName
+          SELECT b.*, r.name as routeName, 
+                 u.username as driverUsername, u.fullName as driverName,
+                 dba.driverId
           FROM Buses b 
           LEFT JOIN Routes r ON b.routeId = r.id
-          LEFT JOIN Users u ON b.driverId = u.id
+          LEFT JOIN DriverBusAssignments dba ON b.id = dba.busId AND dba.active = 1
+          LEFT JOIN Users u ON dba.driverId = u.id
           WHERE b.id = @id
         `);
 
@@ -76,21 +62,8 @@ class BusModel {
 
   async findByBusId(busId) {
     try {
-      // Check if this.sql has request method directly or is a pool with request method
-      let request;
-      if (typeof this.sql.request === 'function') {
-        request = this.sql.request();
-      } else if (this.sql.Request) {
-        // If this.sql is a connection pool
-        request = new this.sql.Request();
-      } else {
-        // Direct use if it's already a request object
-        request = this.sql;
-      }
-
-      const sql = this.sql.constructor.name === 'ConnectionPool' ? this.sql : require('mssql');
-      
-      const result = await request
+      const pool = await this.getPool();
+      const result = await pool.request()
         .input('busId', sql.VarChar, busId)
         .query(`
           SELECT b.*, r.name as routeName, u.username as driverUsername, u.fullName as driverName
@@ -110,14 +83,18 @@ class BusModel {
   async findAll(query = {}) {
     try {
       let sqlQuery = `
-        SELECT b.*, r.name as routeName, u.username as driverUsername, u.fullName as driverName
+        SELECT b.*, r.name as routeName, 
+               u.username as driverUsername, u.fullName as driverName,
+               dba.driverId
         FROM Buses b 
         LEFT JOIN Routes r ON b.routeId = r.id
-        LEFT JOIN Users u ON b.driverId = u.id
+        LEFT JOIN DriverBusAssignments dba ON b.id = dba.busId AND dba.active = 1
+        LEFT JOIN Users u ON dba.driverId = u.id
         WHERE 1=1
       `;
 
-      const request = this.sql.request();
+      const pool = await this.getPool();
+      const request = pool.request();
 
       if (query.routeId) {
         sqlQuery += ' AND b.routeId = @routeId';
@@ -125,7 +102,7 @@ class BusModel {
       }
 
       if (query.driverId) {
-        sqlQuery += ' AND b.driverId = @driverId';
+        sqlQuery += ' AND dba.driverId = @driverId AND dba.active = 1';
         request.input('driverId', sql.Int, query.driverId);
       }
 
@@ -157,7 +134,8 @@ class BusModel {
   async update(id, busData) {
     try {
       let sqlQuery = 'UPDATE Buses SET ';
-      const request = this.sql.request();
+      const pool = await this.getPool();
+      const request = pool.request();
       request.input('id', sql.Int, id);
 
       const updateFields = [];
@@ -236,13 +214,15 @@ class BusModel {
 
   async delete(id) {
     try {
+      const pool = await this.getPool();
+      
       // Primero eliminar logs relacionados
-      await this.sql.request()
+      await pool.request()
         .input('busId', sql.Int, id)
         .query('DELETE FROM OccupancyLogs WHERE busId = @busId');
 
       // Luego eliminar el bus
-      const result = await this.sql.request()
+      const result = await pool.request()
         .input('id', sql.Int, id)
         .query('DELETE FROM Buses WHERE id = @id');
 
@@ -253,21 +233,46 @@ class BusModel {
     }
   }
 
+  async assignDriver(busId, driverId) {
+    try {
+      const pool = await this.getPool();
+      
+      // Desactivar asignaciones anteriores
+      await pool.request()
+        .input('busId', sql.Int, busId)
+        .query('UPDATE DriverBusAssignments SET active = 0 WHERE busId = @busId');
+      
+      // Crear nueva asignación
+      const result = await pool.request()
+        .input('driverId', sql.Int, driverId)
+        .input('busId', sql.Int, busId)
+        .query('INSERT INTO DriverBusAssignments (driverId, busId, active) VALUES (@driverId, @busId, 1)');
+      
+      return result.rowsAffected[0] > 0;
+    } catch (err) {
+      console.error('Error assigning driver:', err);
+      throw err;
+    }
+  }
+
+  async unassign(busId) {
+    try {
+      const pool = await this.getPool();
+      const result = await pool.request()
+        .input('busId', sql.Int, busId)
+        .query('UPDATE DriverBusAssignments SET active = 0 WHERE busId = @busId');
+      
+      return result.rowsAffected[0] > 0;
+    } catch (err) {
+      console.error('Error unassigning driver:', err);
+      throw err;
+    }
+  }
+
   async updatePassengerCount(id, count) {
     try {
-      // Determine the SQL request object
-      let request;
-      const sql = this.sql.constructor.name === 'ConnectionPool' ? this.sql : require('mssql');
-      
-      if (typeof this.sql.request === 'function') {
-        request = this.sql.request();
-      } else if (this.sql.Request) {
-        request = new this.sql.Request();
-      } else {
-        request = this.sql;
-      }
-      
-      const result = await request
+      const pool = await this.getPool();
+      const result = await pool.request()
         .input('id', sql.Int, id)
         .input('count', sql.Int, count)
         .query(`
@@ -285,17 +290,8 @@ class BusModel {
 
   async logOccupancy(busId, count, location = null) {
     try {
-      // Determine the SQL request object
-      let request;
-      const sql = this.sql.constructor.name === 'ConnectionPool' ? this.sql : require('mssql');
-      
-      if (typeof this.sql.request === 'function') {
-        request = this.sql.request();
-      } else if (this.sql.Request) {
-        request = new this.sql.Request();
-      } else {
-        request = this.sql;
-      }
+      const pool = await this.getPool();
+      const request = pool.request();
       
       request.input('busId', sql.Int, busId)
         .input('count', sql.Int, count);
